@@ -179,8 +179,8 @@ services:
   menu-service:
     container_name: lg-backend-menu
     build:
-      context: ./repos/lg-menu-service
-      dockerfile: Dockerfile
+      context: ./repos
+      dockerfile: lg-menu-service/Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -244,9 +244,9 @@ services:
       - lg-public
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.admin.rule=PathPrefix(`/admin`)"
+      - "traefik.http.routers.admin.rule=PathPrefix(`/`)"
       - "traefik.http.routers.admin.entrypoints=web"
-      - "traefik.http.routers.admin.priority=10"
+      - "traefik.http.routers.admin.priority=1"
       - "traefik.http.services.admin.loadbalancer.server.port=3000"
 
   # Management - Next.js 16 Admin UI (Turborepo)

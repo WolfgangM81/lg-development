@@ -46,13 +46,39 @@ http:
       rule: PathPrefix(`/api/tour`)
       service: tour-service
 
-    # lg-management: Next.js Admin UI (catch-all for non-API routes)
+    api-tour-health:
+      entryPoints:
+        - web
+      rule: Path(`/api/tour/health`)
+      middlewares:
+        - api-tour-health-rewrite
+      service: tour-service
+
+    api-menu:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/menu`)
+      service: menu-service
+
+    api-secrets:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/secrets`)
+      service: secrets-service
+
+    api-audit:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/audit`)
+      service: secrets-service
+
+    # Admin UI - Vite Frontend
     admin:
       entryPoints:
         - web
       rule: PathPrefix(`/`)
       priority: 1
-      service: lg-management
+      service: admin-ui
 
   middlewares:
     api-user-health-rewrite:
@@ -60,6 +86,10 @@ http:
         path: /health
 
     api-permissions-health-rewrite:
+      replacePath:
+        path: /health
+
+    api-tour-health-rewrite:
       replacePath:
         path: /health
 
@@ -84,8 +114,18 @@ http:
         servers:
           - url: http://tour-service:3004
 
-    # lg-management: Next.js Admin UI
-    lg-management:
+    menu-service:
       loadBalancer:
         servers:
-          - url: http://lg-management:3000
+          - url: http://menu-service:3005
+
+    secrets-service:
+      loadBalancer:
+        servers:
+          - url: http://secrets-service:3007
+
+    # Admin UI - Vite Frontend
+    admin-ui:
+      loadBalancer:
+        servers:
+          - url: http://lg-frontend-admin:3000
