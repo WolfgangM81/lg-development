@@ -1,6 +1,9 @@
 # Repos directory (Git clones)
 repos/
 
+# Projects directory (Symlinks to local projects)
+projects/
+
 # Environment files
 .env
 .env.local
