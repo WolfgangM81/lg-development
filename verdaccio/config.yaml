@@ -1,0 +1,24 @@
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/conf/htpasswd
+    max_users: 1000
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  "@licenseguard/*":
+    access: $all
+    publish: $anonymous
+    proxy: npmjs
+
+  "**":
+    access: $all
+    publish: $anonymous
+    proxy: npmjs
+
+logs:
+  - {type: stdout, format: pretty, level: http}

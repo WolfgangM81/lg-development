@@ -1,0 +1,91 @@
+http:
+  routers:
+    api-user:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/user`)
+      service: user-service
+
+    api-user-health:
+      entryPoints:
+        - web
+      rule: Path(`/api/user/health`)
+      middlewares:
+        - api-user-health-rewrite
+      service: user-service
+
+    api-permissions:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/permissions`)
+      service: permissions-service
+
+    api-rbac:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/rbac`)
+      service: permissions-service
+
+    api-permissions-health:
+      entryPoints:
+        - web
+      rule: Path(`/api/permissions/health`)
+      middlewares:
+        - api-permissions-health-rewrite
+      service: permissions-service
+
+    api-api-keys:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/v1`)
+      service: api-keys-service
+
+    api-tour:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/api/tour`)
+      service: tour-service
+
+    # lg-management: Next.js Admin UI (catch-all for non-API routes)
+    admin:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/`)
+      priority: 1
+      service: lg-management
+
+  middlewares:
+    api-user-health-rewrite:
+      replacePath:
+        path: /health
+
+    api-permissions-health-rewrite:
+      replacePath:
+        path: /health
+
+  services:
+    user-service:
+      loadBalancer:
+        servers:
+          - url: http://user-service:3002
+
+    permissions-service:
+      loadBalancer:
+        servers:
+          - url: http://permissions-service:3003
+
+    api-keys-service:
+      loadBalancer:
+        servers:
+          - url: http://api-keys-service:3001
+
+    tour-service:
+      loadBalancer:
+        servers:
+          - url: http://tour-service:3004
+
+    # lg-management: Next.js Admin UI
+    lg-management:
+      loadBalancer:
+        servers:
+          - url: http://lg-management:3000

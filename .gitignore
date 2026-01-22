@@ -1,1 +1,23 @@
+# Repos directory (Git clones)
+repos/
+
+# Environment files
+.env
+.env.local
 .env.secrets
+*.env.secrets
+
+# Docker volumes
+postgres_data/
+redis_data/
+verdaccio_storage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

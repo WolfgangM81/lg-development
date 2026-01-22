@@ -7,8 +7,8 @@ services:
     ports:
       - "4873:4873"
     volumes:
-      - /Users/wolfgang/Projects/lg-platform/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
-      - /Users/wolfgang/Projects/lg-platform/verdaccio/htpasswd:/verdaccio/conf/htpasswd
+      - ./verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - ./verdaccio/htpasswd:/verdaccio/conf/htpasswd
       - verdaccio_storage:/verdaccio/storage
     networks:
       - lg-internal
@@ -25,8 +25,8 @@ services:
       - "8081:8080"  # Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /Users/wolfgang/Projects/lg-platform/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - /Users/wolfgang/Projects/lg-platform/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - lg-public
       - lg-internal
@@ -42,7 +42,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-licenseguard}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - /Users/wolfgang/Projects/lg-platform/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - lg-internal
     healthcheck:
@@ -71,8 +71,8 @@ services:
   user-service:
     container_name: lg-backend-user
     build:
-      context: ./repos
-      dockerfile: lg-user-service/Dockerfile
+      context: ./repos/lg-user-service
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -99,8 +99,8 @@ services:
   api-keys-service:
     container_name: lg-backend-api-keys
     build:
-      context: ./repos
-      dockerfile: lg-api-keys-service/Dockerfile
+      context: ./repos/lg-api-keys-service
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -125,8 +125,8 @@ services:
   permissions-service:
     container_name: lg-backend-permissions
     build:
-      context: ./repos
-      dockerfile: lg-permissions-service/Dockerfile
+      context: ./repos/lg-permissions-service
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -152,8 +152,8 @@ services:
   tour-service:
     container_name: lg-backend-tour
     build:
-      context: ./repos
-      dockerfile: lg-tour-service/Dockerfile
+      context: ./repos/lg-tour-service
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -179,8 +179,8 @@ services:
   menu-service:
     container_name: lg-backend-menu
     build:
-      context: ./repos
-      dockerfile: lg-menu-service/Dockerfile
+      context: ./repos/lg-menu-service
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -248,6 +248,32 @@ services:
       - "traefik.http.routers.admin.entrypoints=web"
       - "traefik.http.routers.admin.priority=10"
       - "traefik.http.services.admin.loadbalancer.server.port=3000"
+
+  # Management - Next.js 16 Admin UI (Turborepo)
+  lg-management:
+    container_name: lg-frontend-management
+    build:
+      context: ./repos/lg-management
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://user-service:3002/api/user
+    depends_on:
+      - user-service
+      - permissions-service
+      - tour-service
+      - menu-service
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lg-management.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.lg-management.entrypoints=web"
+      - "traefik.http.routers.lg-management.priority=1"
+      - "traefik.http.services.lg-management.loadbalancer.server.port=3000"
 
 networks:
   lg-public:
