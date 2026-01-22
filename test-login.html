@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, button { display: block; margin: 10px 0; padding: 10px; }
+        #result { margin-top: 20px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Test Login API</h1>
+
+    <input type="email" id="email" value="admin@apikeys.local" placeholder="Email">
+    <input type="password" id="password" value="admin123" placeholder="Password">
+    <button onclick="testLogin()">Test Login</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('result');
+
+            result.textContent = 'Sending request...';
+
+            try {
+                const response = await fetch('http://localhost/api/user/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                result.textContent = `Status: ${response.status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+
+                if (data.success) {
+                    result.style.color = 'green';
+                    console.log('Access Token:', data.data.accessToken);
+                } else {
+                    result.style.color = 'red';
+                }
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>
