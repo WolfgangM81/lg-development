@@ -1,0 +1,263 @@
+services:
+  # Local NPM Registry (Verdaccio)
+  verdaccio:
+    container_name: lg-infra-verdaccio
+    image: verdaccio/verdaccio:5
+    restart: unless-stopped
+    ports:
+      - "4873:4873"
+    volumes:
+      - /Users/wolfgang/Projects/lg-platform/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - /Users/wolfgang/Projects/lg-platform/verdaccio/htpasswd:/verdaccio/conf/htpasswd
+      - verdaccio_storage:/verdaccio/storage
+    networks:
+      - lg-internal
+
+  # Reverse Proxy
+  traefik:
+    container_name: lg-infra-traefik
+    image: traefik:v3.0
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "81:80"
+      - "444:443"
+      - "8081:8080"  # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/wolfgang/Projects/lg-platform/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /Users/wolfgang/Projects/lg-platform/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - lg-public
+      - lg-internal
+
+  # PostgreSQL Database
+  postgres:
+    container_name: lg-infra-postgres
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-licenseguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-licenseguard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /Users/wolfgang/Projects/lg-platform/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - lg-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-licenseguard}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    container_name: lg-infra-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - lg-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Service (Internal)
+  user-service:
+    container_name: lg-backend-user
+    build:
+      context: ./repos
+      dockerfile: lg-user-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-internal-secret-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user-service.rule=PathPrefix(`/api/user`)"
+      - "traefik.http.routers.user-service.entrypoints=web"
+      - "traefik.http.services.user-service.loadbalancer.server.port=3002"
+
+  # API Keys Service (Public)
+  api-keys-service:
+    container_name: lg-backend-api-keys
+    build:
+      context: ./repos
+      dockerfile: lg-api-keys-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-keys-service.rule=PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.api-keys-service.entrypoints=web"
+      - "traefik.http.services.api-keys-service.loadbalancer.server.port=3001"
+
+  # Permissions Service (Internal)
+  permissions-service:
+    container_name: lg-backend-permissions
+    build:
+      context: ./repos
+      dockerfile: lg-permissions-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.permissions-service.rule=PathPrefix(`/api/permissions`) || PathPrefix(`/api/rbac`)"
+      - "traefik.http.routers.permissions-service.entrypoints=web"
+      - "traefik.http.services.permissions-service.loadbalancer.server.port=3003"
+
+  # Tour Service - NextStepjs Integration with Form Registry
+  tour-service:
+    container_name: lg-backend-tour
+    build:
+      context: ./repos
+      dockerfile: lg-tour-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tour-service.rule=PathPrefix(`/api/tour`)"
+      - "traefik.http.routers.tour-service.entrypoints=web"
+      - "traefik.http.services.tour-service.loadbalancer.server.port=3004"
+
+  # Menu Service - Hierarchical menu management with user preferences
+  menu-service:
+    container_name: lg-backend-menu
+    build:
+      context: ./repos
+      dockerfile: lg-menu-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.menu-service.rule=PathPrefix(`/api/menu`)"
+      - "traefik.http.routers.menu-service.entrypoints=web"
+      - "traefik.http.services.menu-service.loadbalancer.server.port=3005"
+
+  # Secrets Service - Centralized encrypted secrets management
+  secrets-service:
+    container_name: lg-backend-secrets
+    build:
+      context: ./repos/lg-secrets-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+      DATABASE_URL: postgres://${POSTGRES_USER:-licenseguard}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-licenseguard}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      AUDIT_RETENTION_DAYS: 90
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.secrets-service.rule=PathPrefix(`/api/secrets`) || PathPrefix(`/api/audit`)"
+      - "traefik.http.routers.secrets-service.entrypoints=web"
+      - "traefik.http.services.secrets-service.loadbalancer.server.port=3007"
+
+  # Admin - Consolidated Admin UI (formerly admin-shell)
+  admin:
+    container_name: lg-frontend-admin
+    build:
+      context: ./repos
+      dockerfile: lg-admin/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - user-service
+      - permissions-service
+      - api-keys-service
+    networks:
+      - lg-internal
+      - lg-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=PathPrefix(`/admin`)"
+      - "traefik.http.routers.admin.entrypoints=web"
+      - "traefik.http.routers.admin.priority=10"
+      - "traefik.http.services.admin.loadbalancer.server.port=3000"
+
+networks:
+  lg-public:
+    external: true
+    name: lg-public
+  lg-internal:
+    external: true
+    name: lg-internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  verdaccio_storage:

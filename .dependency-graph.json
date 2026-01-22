@@ -4,7 +4,9 @@
       "type": "npm-package",
       "dependsOn": [],
       "consumers": [
-        "lg-admin"
+        "lg-admin",
+        "lg-management",
+        "lg-menu-service"
       ]
     }
   },
@@ -20,6 +22,16 @@
       "consumers": []
     },
     "lg-tour-service": {
+      "type": "backend",
+      "dependsOn": [],
+      "consumers": []
+    },
+    "lg-menu-service": {
+      "type": "backend",
+      "dependsOn": ["lg-menu-registry"],
+      "consumers": ["lg-management"]
+    },
+    "lg-secrets-service": {
       "type": "backend",
       "dependsOn": [],
       "consumers": []

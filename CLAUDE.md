@@ -14,21 +14,27 @@ AI Assistant Instructions für dieses Projekt.
 
 ---
 
-## 🚨 KRITISCHE REGEL #1: NON-DESTRUCTIVE!
+## 🚨 KRITISCHE REGEL #1: REPOS/ SIND GIT CLONES!
 
-**NIEMALS** das Original-Monorepo anfassen!
+**repos/** enthält **Git Clones von GitHub**, NICHT Kopien aus `/Users/wolfgang/Projects`!
 
-### ❌ VERBOTEN:
-- Dateien in `../lg-*` löschen/ändern
-- Git History in Originalen manipulieren
-- Dependencies in Originalen updaten
+### ✅ SO FUNKTIONIERT ES:
+```bash
+cd /Users/wolfgang/Projects/lg-development/repos
+gh repo clone WolfgangM81/lg-menu-service  # Clont von GitHub
+gh repo clone WolfgangM81/lg-secrets-service
 
-### ✅ ERLAUBT:
-- Lesen aus `../lg-*`
-- Kopieren nach `repos/`
-- Änderungen NUR in `repos/`
+# Jedes Projekt in repos/ hat eigenes .git
+cd repos/lg-menu-service
+git pull  # Updates von GitHub
+git push  # Pusht zu GitHub
+```
 
-**Warum?** Original muss jederzeit als Fallback funktionieren!
+### ❌ NIEMALS:
+- Aus `/Users/wolfgang/Projects/lg-*` kopieren
+- repos/ in lg-development commiten (ist gitignored!)
+
+**Warum?** lg-development ist ein Development Orchestrator, kein Code-Repo!
 
 ---
 
