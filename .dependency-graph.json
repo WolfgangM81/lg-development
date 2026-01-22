@@ -1,0 +1,71 @@
+{
+  "libraries": {
+    "lg-menu-registry": {
+      "type": "npm-package",
+      "dependsOn": [],
+      "consumers": [
+        "lg-admin"
+      ]
+    }
+  },
+  "services": {
+    "lg-api-keys-service": {
+      "type": "backend",
+      "dependsOn": [],
+      "consumers": []
+    },
+    "lg-permissions-service": {
+      "type": "backend",
+      "dependsOn": [],
+      "consumers": []
+    },
+    "lg-tour-service": {
+      "type": "backend",
+      "dependsOn": [],
+      "consumers": []
+    },
+    "lg-user-service": {
+      "type": "backend",
+      "dependsOn": [],
+      "consumers": []
+    }
+  },
+  "frontends": {
+    "lg-admin-ui": {
+      "type": "frontend",
+      "dependsOn": [],
+      "consumers": [
+        "lg-admin"
+      ]
+    },
+    "lg-admin": {
+      "type": "frontend",
+      "dependsOn": [
+        "lg-admin-ui",
+        "lg-menu-registry"
+      ],
+      "consumers": []
+    }
+  },
+  "infrastructure": {
+    "lg-platform": {
+      "type": "infrastructure",
+      "dependsOn": [],
+      "consumers": []
+    }
+  },
+  "monorepos": {
+    "lg-management": {
+      "type": "monorepo",
+      "dependsOn": [],
+      "consumers": []
+    }
+  },
+  "other": {
+    "lg-e2e-tests": {
+      "type": "other",
+      "dependsOn": [],
+      "consumers": []
+    }
+  }
+}

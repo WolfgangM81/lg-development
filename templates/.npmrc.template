@@ -1,0 +1,12 @@
+# Verdaccio Registry (Local Development)
+registry=http://localhost:4873/
+
+# GitHub Packages Registry (Production)
+@WolfgangM81:registry=https://npm.pkg.github.com/
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+
+# Always prefer exact versions
+save-exact=true
+
+# Legacy peer deps for React 19 compatibility
+legacy-peer-deps=true

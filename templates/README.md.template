@@ -1,0 +1,55 @@
+# PROJECT_NAME
+
+> Part of the LicenseGuard platform
+
+## 📦 Installation
+
+```bash
+npm install @WolfgangM81/PROJECT_NAME
+```
+
+## 🚀 Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run tests
+npm test
+
+# Development mode
+npm run dev
+```
+
+## 📝 Configuration
+
+### Using with Verdaccio (Local Development)
+
+```bash
+# Point to local registry
+npm config set registry http://localhost:4873/
+
+# Install from local
+npm install @WolfgangM81/PROJECT_NAME
+```
+
+### Using with GitHub Packages (Production)
+
+```bash
+# Authenticate
+echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> ~/.npmrc
+
+# Install from GitHub
+npm install @WolfgangM81/PROJECT_NAME
+```
+
+## 🏗️ Architecture
+
+_TODO: Add architecture overview_
+
+## 📄 License
+
+MIT

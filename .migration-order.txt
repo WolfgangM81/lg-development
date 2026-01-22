@@ -1,0 +1,24 @@
+=== Migration Order (Topological Sort) ===
+
+Lower levels can be migrated in parallel.
+Each level depends only on previous levels.
+
+Level 0: (8 projects)
+  - lg-admin-ui (no dependencies)
+  - lg-api-keys-service (no dependencies)
+  - lg-e2e-tests (no dependencies)
+  - lg-menu-registry (no dependencies)
+  - lg-permissions-service (no dependencies)
+  - lg-platform (no dependencies)
+  - lg-tour-service (no dependencies)
+  - lg-user-service (no dependencies)
+
+Level 1: (1 projects)
+  - lg-admin (depends on: lg-admin-ui, lg-menu-registry)
+
+=== Recommended Migration Strategy ===
+
+1. Level 0: Core libraries (parallel safe)
+2. Level 1: Services depending on Level 0 (parallel safe)
+3. Level 2+: Higher-level services and frontends
+
