@@ -1,15 +1,40 @@
 http:
   routers:
+    # Host-based routing (Proxy Domains)
+    traefik-dashboard-domain:
+      entryPoints:
+        - web
+      rule: Host(`traefik.lg.local`)
+      priority: 100
+      service: api@internal
+
+    admin-domain:
+      entryPoints:
+        - web
+      rule: Host(`admin.lg.local`)
+      priority: 50
+      service: admin-ui
+
+    api-domain:
+      entryPoints:
+        - web
+      rule: Host(`api.lg.local`)
+      priority: 50
+      service: admin-ui
+
+    # Path-based routing (works on ALL hosts with higher priority)
     api-user:
       entryPoints:
         - web
       rule: PathPrefix(`/api/user`)
+      priority: 100
       service: user-service
 
     api-user-health:
       entryPoints:
         - web
       rule: Path(`/api/user/health`)
+      priority: 150
       middlewares:
         - api-user-health-rewrite
       service: user-service
@@ -18,18 +43,21 @@ http:
       entryPoints:
         - web
       rule: PathPrefix(`/api/permissions`)
+      priority: 100
       service: permissions-service
 
     api-rbac:
       entryPoints:
         - web
       rule: PathPrefix(`/api/rbac`)
+      priority: 100
       service: permissions-service
 
     api-permissions-health:
       entryPoints:
         - web
       rule: Path(`/api/permissions/health`)
+      priority: 150
       middlewares:
         - api-permissions-health-rewrite
       service: permissions-service
@@ -38,18 +66,21 @@ http:
       entryPoints:
         - web
       rule: PathPrefix(`/api/v1`)
+      priority: 100
       service: api-keys-service
 
     api-tour:
       entryPoints:
         - web
       rule: PathPrefix(`/api/tour`)
+      priority: 100
       service: tour-service
 
     api-tour-health:
       entryPoints:
         - web
       rule: Path(`/api/tour/health`)
+      priority: 150
       middlewares:
         - api-tour-health-rewrite
       service: tour-service
@@ -58,21 +89,24 @@ http:
       entryPoints:
         - web
       rule: PathPrefix(`/api/menu`)
+      priority: 100
       service: menu-service
 
     api-secrets:
       entryPoints:
         - web
       rule: PathPrefix(`/api/secrets`)
+      priority: 100
       service: secrets-service
 
     api-audit:
       entryPoints:
         - web
       rule: PathPrefix(`/api/audit`)
+      priority: 100
       service: secrets-service
 
-    # Admin UI - Vite Frontend
+    # Admin UI Fallback (lowest priority, catches all other requests)
     admin:
       entryPoints:
         - web

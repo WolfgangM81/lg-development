@@ -22,6 +22,28 @@ lg-development is a **repository manager** that orchestrates the migration from 
 
 ---
 
+## 🌐 Development Environment (NEW!)
+
+**Lokale Proxy-Domains ohne Ports** für alle Services!
+
+```bash
+# Setup (einmalig)
+sudo sh -c 'echo "127.0.0.1 admin.lg.local api.lg.local traefik.lg.local" >> /etc/hosts'
+
+# Services starten
+docker-compose up -d
+
+# Zugriff OHNE Ports
+http://admin.lg.local              # Admin UI
+http://api.lg.local/user           # User Service
+http://api.lg.local/permissions    # Permissions Service
+http://traefik.lg.local            # Traefik Dashboard
+```
+
+**📖 Siehe [PROXY_DOMAINS.md](./PROXY_DOMAINS.md) für vollständige Dokumentation.**
+
+---
+
 ## ⚡ Quick Start (5 minutes)
 
 ### Prerequisites
