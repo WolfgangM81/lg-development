@@ -321,66 +321,49 @@ CREATE TABLE IF NOT EXISTS user_menu_preferences (
 CREATE INDEX IF NOT EXISTS idx_user_menu_preferences_user ON user_menu_preferences(user_id);
 
 -- Seed default menu items
--- User Admin Menu
--- Hierarchical Menu Structure
--- Parent items (group headers with no href, collapsible sections)
-INSERT INTO menu_items (id, parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
-  ('user-parent', NULL, 'user', 'menu.user.title', 'User Admin', NULL, 'users', 10, true),
-  ('permissions-parent', NULL, 'permissions', 'menu.permissions.title', 'Permissions Admin', NULL, 'shield', 20, true),
-  ('apikeys-parent', NULL, 'apikeys', 'menu.apikeys.title', 'API Keys', NULL, 'key', 30, true),
-  ('activities-parent', NULL, 'activities', 'menu.activities.title', 'Activities', NULL, 'activity', 40, true)
-ON CONFLICT (id) DO UPDATE SET
-    label_default = EXCLUDED.label_default,
-    href = EXCLUDED.href,
-    icon = EXCLUDED.icon,
-    sort_order = EXCLUDED.sort_order,
-    parent_id = EXCLUDED.parent_id;
+-- Use DO block to handle idempotent menu item seeding
+DO $$
+BEGIN
+    -- Only insert menu items if table is empty
+    IF NOT EXISTS (SELECT 1 FROM menu_items LIMIT 1) THEN
+        -- Insert parent menu items (group headers)
+        INSERT INTO menu_items (parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
+          (NULL, 'user', 'menu.user.title', 'User Admin', NULL, 'users', 10, true),
+          (NULL, 'permissions', 'menu.permissions.title', 'Permissions Admin', NULL, 'shield', 20, true),
+          (NULL, 'apikeys', 'menu.apikeys.title', 'API Keys', NULL, 'key', 30, true);
 
--- User Admin children
-INSERT INTO menu_items (id, parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
-  ('user-dashboard', 'user-parent', 'user', 'menu.user.dashboard', 'Dashboard', '/admin/user/dashboard', 'layout-dashboard', 10, true),
-  ('user-users', 'user-parent', 'user', 'menu.user.users', 'Benutzer', '/admin/user/users', 'users', 20, true)
-ON CONFLICT (id) DO UPDATE SET
-    label_default = EXCLUDED.label_default,
-    href = EXCLUDED.href,
-    icon = EXCLUDED.icon,
-    sort_order = EXCLUDED.sort_order,
-    parent_id = EXCLUDED.parent_id;
-
--- Permissions Admin children
-INSERT INTO menu_items (id, parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
-  ('permissions-dashboard', 'permissions-parent', 'permissions', 'menu.permissions.dashboard', 'Dashboard', '/admin/permissions/dashboard', 'layout-dashboard', 10, true),
-  ('permissions-permissions', 'permissions-parent', 'permissions', 'menu.permissions.permissions', 'Berechtigungen', '/admin/permissions/permissions', 'shield-check', 20, true),
-  ('permissions-modules', 'permissions-parent', 'permissions', 'menu.permissions.modules', 'Module', '/admin/permissions/modules', 'package', 30, true),
-  ('permissions-variants', 'permissions-parent', 'permissions', 'menu.permissions.variants', 'Varianten', '/admin/permissions/variants', 'layers', 40, true),
-  ('permissions-groups', 'permissions-parent', 'permissions', 'menu.permissions.groups', 'Gruppen', '/admin/permissions/groups', 'users-round', 50, true),
-  ('permissions-matrix', 'permissions-parent', 'permissions', 'menu.permissions.matrix', 'Matrix', '/admin/permissions/matrix', 'grid-2x2', 60, true)
-ON CONFLICT (id) DO UPDATE SET
-    label_default = EXCLUDED.label_default,
-    href = EXCLUDED.href,
-    icon = EXCLUDED.icon,
-    sort_order = EXCLUDED.sort_order,
-    parent_id = EXCLUDED.parent_id;
-
--- API Keys children
-INSERT INTO menu_items (id, parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
-  ('apikeys-dashboard', 'apikeys-parent', 'apikeys', 'menu.apikeys.dashboard', 'Dashboard', '/admin/api-keys/dashboard', 'layout-dashboard', 10, true),
-  ('apikeys-keys', 'apikeys-parent', 'apikeys', 'menu.apikeys.keys', 'API-Schlüssel', '/admin/api-keys/api-keys', 'key', 20, true)
-ON CONFLICT (id) DO UPDATE SET
-    label_default = EXCLUDED.label_default,
-    href = EXCLUDED.href,
-    icon = EXCLUDED.icon,
-    sort_order = EXCLUDED.sort_order,
-    parent_id = EXCLUDED.parent_id;
-
--- Activities children (requires lg-activities-admin module to be deployed)
-INSERT INTO menu_items (id, parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active) VALUES
-  ('activities-dashboard', 'activities-parent', 'activities', 'menu.activities.dashboard', 'Dashboard', '/admin/activities/dashboard', 'layout-dashboard', 10, true),
-  ('activities-user', 'activities-parent', 'activities', 'menu.activities.user', 'Benutzer-Aktivitäten', '/admin/activities/user', 'user-check', 20, true),
-  ('activities-apikeys', 'activities-parent', 'activities', 'menu.activities.apikeys', 'API-Schlüssel-Aktivitäten', '/admin/activities/api-keys', 'key-round', 30, true)
-ON CONFLICT (id) DO UPDATE SET
-    label_default = EXCLUDED.label_default,
-    href = EXCLUDED.href,
-    icon = EXCLUDED.icon,
-    sort_order = EXCLUDED.sort_order,
-    parent_id = EXCLUDED.parent_id;
+        -- Insert child menu items using parent references
+        INSERT INTO menu_items (parent_id, module_key, label_key, label_default, href, icon, sort_order, is_active)
+        SELECT
+          p.id, 'user', 'menu.user.dashboard', 'Dashboard', '/user/dashboard', 'layout-dashboard', 10, true
+        FROM menu_items p WHERE p.module_key = 'user' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'user', 'menu.user.users', 'Benutzer', '/user/users', 'users', 20, true
+        FROM menu_items p WHERE p.module_key = 'user' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'permissions', 'menu.permissions.dashboard', 'Dashboard', '/permissions/dashboard', 'layout-dashboard', 10, true
+        FROM menu_items p WHERE p.module_key = 'permissions' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'permissions', 'menu.permissions.permissions', 'Berechtigungen', '/permissions/permissions', 'shield-check', 20, true
+        FROM menu_items p WHERE p.module_key = 'permissions' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'permissions', 'menu.permissions.modules', 'Module', '/permissions/modules', 'package', 30, true
+        FROM menu_items p WHERE p.module_key = 'permissions' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'permissions', 'menu.permissions.groups', 'Gruppen', '/permissions/groups', 'users-round', 40, true
+        FROM menu_items p WHERE p.module_key = 'permissions' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'apikeys', 'menu.apikeys.dashboard', 'Dashboard', '/api-keys/dashboard', 'layout-dashboard', 10, true
+        FROM menu_items p WHERE p.module_key = 'apikeys' AND p.parent_id IS NULL
+        UNION ALL
+        SELECT
+          p.id, 'apikeys', 'menu.apikeys.keys', 'API-Schlüssel', '/api-keys/api-keys', 'key', 20, true
+        FROM menu_items p WHERE p.module_key = 'apikeys' AND p.parent_id IS NULL;
+    END IF;
+END $$;
