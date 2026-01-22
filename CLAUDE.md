@@ -19,19 +19,30 @@ AI Assistant Instructions für dieses Projekt.
 **repos/** enthält **Git Clones von GitHub**, NICHT Kopien aus `/Users/wolfgang/Projects`!
 
 ### ✅ SO FUNKTIONIERT ES:
-```bash
-cd /Users/wolfgang/Projects/lg-development/repos
-gh repo clone WolfgangM81/lg-menu-service  # Clont von GitHub
-gh repo clone WolfgangM81/lg-secrets-service
 
-# Jedes Projekt in repos/ hat eigenes .git
+**Option A - Automated Setup (Empfohlen):**
+```bash
+# 1. Konfiguriere .env (welche Repos clonen?)
+vi .env  # CLONE_LG_PLATFORM=true, etc.
+
+# 2. Run setup script
+./scripts/dev/setup.sh  # Clont von GitHub nach repos/
+
+# 3. Jedes Projekt in repos/ hat eigenes .git
 cd repos/lg-menu-service
 git pull  # Updates von GitHub
 git push  # Pusht zu GitHub
 ```
 
+**Option B - Manual Clone:**
+```bash
+cd /Users/wolfgang/Projects/lg-development/repos
+gh repo clone WolfgangM81/lg-menu-service
+gh repo clone WolfgangM81/lg-secrets-service
+```
+
 ### ❌ NIEMALS:
-- Aus `/Users/wolfgang/Projects/lg-*` kopieren
+- Aus `/Users/wolfgang/Projects/lg-*` kopieren (das ist für Migration, nicht Development!)
 - repos/ in lg-development commiten (ist gitignored!)
 
 **Warum?** lg-development ist ein Development Orchestrator, kein Code-Repo!
@@ -64,19 +75,50 @@ git push origin main  # ← Zu WolfgangM81/lg-admin-ui
 
 ```
 ~/Projects/lg-development/           # Dieses Repo (Manager)
-├── scripts/                         # 8 Automation Scripts
+├── scripts/
+│   ├── migration/                   # 🔧 Migration Scripts (einmalig)
+│   │   ├── migrate.sh              # Master Wizard
+│   │   ├── copy-all.sh             # Kopiert von ~/Projects/lg-*
+│   │   └── ...
+│   └── dev/                         # 🚀 Development Scripts (täglich)
+│       ├── setup.sh                # Clont von GitHub → repos/
+│       ├── start.sh                # Docker Stack starten
+│       └── ...
 ├── templates/                       # .npmrc, Workflows, etc.
-├── repos/                           # ⚠️ GITIGNORED! Kopierte Projekte
-│   ├── lg-admin-ui/.git            # Separates Git Repo
-│   ├── lg-management/.git          # Separates Git Repo
+├── repos/                           # ⚠️ GITIGNORED! Git Clones
+│   ├── lg-admin-ui/.git            # Von GitHub geclont
+│   ├── lg-management/.git          # Von GitHub geclont
 │   └── ...
 ├── .dependency-graph.json          # Auto-generiert
-└── .migration-order.txt            # Auto-generiert
+├── .env                             # Setup Config (CLONE_LG_*)
+└── docker-compose.yml              # Infrastructure Stack
 
 ~/Projects/                          # ✅ ORIGINAL MONOREPO (bleibt!)
 ├── lg-admin/
 ├── lg-management/
 └── ...
+```
+
+---
+
+## 🔄 Zwei Workflows
+
+### 1️⃣ Migration Workflow (Einmalig)
+Kopiert Projekte aus Monorepo, bereitet vor, pusht zu GitHub.
+
+```bash
+# Aus ~/Projects/lg-* → lg-development/repos/ → GitHub
+./scripts/migration/migrate.sh
+```
+
+### 2️⃣ Development Workflow (Täglich)
+Clont von GitHub, startet Docker Stack, entwickelt lokal.
+
+```bash
+# GitHub → lg-development/repos/ → Local Development
+./scripts/dev/setup.sh   # Clone repos
+./scripts/dev/start.sh   # Start Stack
+./scripts/dev/logs.sh    # View Logs
 ```
 
 ---

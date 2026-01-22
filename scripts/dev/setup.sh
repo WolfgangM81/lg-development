@@ -33,8 +33,8 @@ echo -e "${BLUE}║     🚀 CLONING PROJECTS FROM GITHUB                       
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-mkdir -p projects
-cd projects
+mkdir -p repos
+cd repos
 
 clone_repo() {
     local repo=$1
@@ -59,6 +59,7 @@ clone_repo "lg-permissions-service" "$CLONE_LG_PERMISSIONS_SERVICE"
 clone_repo "lg-api-keys-service" "$CLONE_LG_API_KEYS_SERVICE"
 clone_repo "lg-secrets-service" "$CLONE_LG_SECRETS_SERVICE"
 clone_repo "lg-tour-service" "$CLONE_LG_TOUR_SERVICE"
+clone_repo "lg-menu-service" "$CLONE_LG_MENU_SERVICE"
 clone_repo "lg-admin" "$CLONE_LG_ADMIN"
 clone_repo "lg-admin-ui" "$CLONE_LG_ADMIN_UI"
 clone_repo "lg-menu-registry" "$CLONE_LG_MENU_REGISTRY"
