@@ -16,16 +16,17 @@ services:
     command: >
       sh -c "
       echo '🔄 Starting TypeScript watch mode for menu-registry...' &&
-      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/menu-registry
-        --declaration --sourceMap --pretty
+      rm -rf /dist/menu-registry/*.test.js /dist/menu-registry/*.test.d.ts /dist/menu-registry/*.test.*.map &&
+      cp /app/package.json /dist/menu-registry/package.json 2>/dev/null || true &&
+      npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/menu-registry/index.js"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 30s
+      test: ["CMD", "sh", "-c", "test -f /dist/menu-registry/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   # Builder für lg-backend-common
   backend-common-builder:
@@ -40,13 +41,14 @@ services:
     command: >
       sh -c "
       echo '🔄 Starting TypeScript watch mode for backend-common...' &&
-      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/backend-common
-        --declaration --sourceMap --pretty
+      rm -rf /dist/backend-common/*.test.js /dist/backend-common/*.test.d.ts /dist/backend-common/*.test.*.map &&
+      cp /app/package.json /dist/backend-common/package.json 2>/dev/null || true &&
+      npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/backend-common/index.js"]
-      interval: 5s
+      test: ["CMD", "sh", "-c", "test -f /dist/backend-common/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
+      interval: 10s
       timeout: 3s
       retries: 10
       start_period: 30s
@@ -64,13 +66,14 @@ services:
     command: >
       sh -c "
       echo '🔄 Starting TypeScript watch mode for types...' &&
-      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/types
-        --declaration --sourceMap --pretty
+      rm -rf /dist/types/*.test.js /dist/types/*.test.d.ts /dist/types/*.test.*.map &&
+      cp /app/package.json /dist/types/package.json 2>/dev/null || true &&
+      npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/types/index.js"]
-      interval: 5s
+      test: ["CMD", "sh", "-c", "test -f /dist/types/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
+      interval: 10s
       timeout: 3s
       retries: 10
       start_period: 30s

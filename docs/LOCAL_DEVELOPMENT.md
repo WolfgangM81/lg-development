@@ -59,6 +59,7 @@ make dev-sync-status               # Builder status anzeigen
 make dev-sync-logs PACKAGE=menu-registry   # Compilation logs ansehen
 make dev-sync-rebuild              # Alle Builder neu starten
 make dev-sync-clean                # Build artifacts löschen
+make dev-sync-watch                # Auto-restart services on package changes
 ```
 
 ### Development Workflow
@@ -88,6 +89,49 @@ curl http://api.lg.local/menu/health
 
 # Fertig! 🎉
 ```
+
+### 🔄 Auto-Restart Services (Fortgeschritten)
+
+**Problem:** Consumer services mit `tsx watch` reloaden manchmal nicht automatisch.
+
+**Lösung:** Watchdog-Script überwacht Package-Änderungen und restartet Services:
+
+```bash
+# Terminal 1: Hot-reload aktivieren
+make dev-sync
+
+# Terminal 2: Watchdog starten (überwacht Packages, restartet Services)
+make dev-sync-watch
+
+# Terminal 3: Development
+cd repos/lg-menu-registry
+vim src/index.ts
+# → Builder kompiliert (~1-2s)
+# → Watchdog erkennt Änderung
+# → Services werden automatisch neu gestartet
+# → Änderungen sichtbar in ~3-4s total!
+```
+
+**Wie es funktioniert:**
+- Überwacht `/dist/menu-registry/index.js` Modification Time
+- Erkennt Änderungen alle 2 Sekunden
+- Führt `docker restart` auf Consumer Services aus
+- Funktioniert parallel zu `tsx watch` (Double-Safety)
+
+**Anpassen:**
+```bash
+# Nur bestimmte Services überwachen
+./scripts/dev/watch-packages.sh "menu-service user-service"
+
+# Nur bestimmte Packages überwachen
+./scripts/dev/watch-packages.sh "menu-service user-service" "menu-registry backend-common"
+```
+
+**Wann nutzen?**
+- ✅ `tsx watch` reagiert nicht auf Package-Änderungen
+- ✅ Multiple Consumer Services gleichzeitig entwickeln
+- ✅ Garantierte Restarts nach Package Updates
+- ❌ NICHT nötig wenn `tsx watch` funktioniert (normaler Fall)
 
 ### Consumer Services konfigurieren
 

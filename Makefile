@@ -2,7 +2,7 @@
 #
 # Main orchestration for multi-repo Docker Compose setup
 
-.PHONY: help setup prepare start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean
+.PHONY: help setup prepare start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch
 
 # Load environment variables
 -include .env
@@ -60,6 +60,7 @@ help:
 	@echo "  make dev-sync-logs PACKAGE=name    - View compilation logs"
 	@echo "  make dev-sync-rebuild              - Restart all builders"
 	@echo "  make dev-sync-clean                - Clean build artifacts"
+	@echo "  make dev-sync-watch                - Watch & auto-restart services"
 	@echo ""
 	@echo "$(GREEN)GitHub Registry Setup:$(NC)"
 	@echo "  make setup-github-registry      - Configure .npmrc for all repos"
@@ -338,3 +339,11 @@ dev-sync-rebuild:
 # Clean package build artifacts
 dev-sync-clean:
 	@./scripts/dev/sync-packages.sh clean
+
+# Watch packages and auto-restart services
+dev-sync-watch:
+	@if [ ! -f scripts/dev/watch-packages.sh ]; then \
+		echo "$(RED)❌ scripts/dev/watch-packages.sh not found!$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/dev/watch-packages.sh

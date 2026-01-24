@@ -1,0 +1,30 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "📝 Validating commit message..."
+
+# Run commitlint in Docker
+docker run --rm \
+  -v "$(pwd):/app" \
+  -w /app \
+  -v "$1:/tmp/commit-msg" \
+  node:20-alpine \
+  sh -c "npm install --no-save @commitlint/cli @commitlint/config-conventional > /dev/null 2>&1 && npx commitlint --edit /tmp/commit-msg"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit message doesn't follow Conventional Commits!"
+  echo ""
+  echo "Format: <type>(<scope>): <subject>"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add new feature"
+  echo "  fix: resolve bug"
+  echo "  docs: update readme"
+  echo "  feat!: breaking change"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore"
+  exit 1
+fi
+
+echo "✅ Commit message valid!"

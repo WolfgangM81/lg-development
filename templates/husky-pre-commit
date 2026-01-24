@@ -1,0 +1,20 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🧪 Running tests in Docker before commit..."
+
+# Run tests in Docker
+docker run --rm \
+  -v "$(pwd):/app" \
+  -w /app \
+  node:20-alpine \
+  sh -c "npm install > /dev/null 2>&1 && npm test"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed! Commit aborted."
+  echo "Fix the tests before committing."
+  exit 1
+fi
+
+echo "✅ Tests passed!"
