@@ -1,0 +1,76 @@
+volumes:
+  lg-packages-dist:
+    driver: local
+
+services:
+  # Builder für lg-menu-registry
+  menu-registry-builder:
+    image: node:20-alpine
+    container_name: lg-builder-menu-registry
+    working_dir: /app
+    volumes:
+      - ./repos/lg-menu-registry/src:/app/src:ro
+      - ./repos/lg-menu-registry/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/lg-menu-registry/package.json:/app/package.json:ro
+      - lg-packages-dist:/dist
+    command: >
+      sh -c "
+      echo '🔄 Starting TypeScript watch mode for menu-registry...' &&
+      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/menu-registry
+        --declaration --sourceMap --pretty
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/dist/menu-registry/index.js"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  # Builder für lg-backend-common
+  backend-common-builder:
+    image: node:20-alpine
+    container_name: lg-builder-backend-common
+    working_dir: /app
+    volumes:
+      - ./repos/lg-backend-common/src:/app/src:ro
+      - ./repos/lg-backend-common/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/lg-backend-common/package.json:/app/package.json:ro
+      - lg-packages-dist:/dist
+    command: >
+      sh -c "
+      echo '🔄 Starting TypeScript watch mode for backend-common...' &&
+      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/backend-common
+        --declaration --sourceMap --pretty
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/dist/backend-common/index.js"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  # Builder für lg-types
+  types-builder:
+    image: node:20-alpine
+    container_name: lg-builder-types
+    working_dir: /app
+    volumes:
+      - ./repos/lg-types/src:/app/src:ro
+      - ./repos/lg-types/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/lg-types/package.json:/app/package.json:ro
+      - lg-packages-dist:/dist
+    command: >
+      sh -c "
+      echo '🔄 Starting TypeScript watch mode for types...' &&
+      npx -y -p typescript@5.3.3 tsc --watch --outDir /dist/types
+        --declaration --sourceMap --pretty
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/dist/types/index.js"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s

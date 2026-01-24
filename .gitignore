@@ -24,3 +24,4 @@ verdaccio_storage/
 
 # Logs
 *.log
+scripts/dev/.verdaccio-token
