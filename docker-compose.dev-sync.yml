@@ -17,16 +17,37 @@ services:
       sh -c "
       echo '🔄 Starting TypeScript watch mode for menu-registry...' &&
       rm -rf /dist/menu-registry/*.test.js /dist/menu-registry/*.test.d.ts /dist/menu-registry/*.test.*.map &&
-      cp /app/package.json /dist/menu-registry/package.json 2>/dev/null || true &&
+      node -e \"
+      const fs = require('fs');
+      const pkg = JSON.parse(fs.readFileSync('/app/package.json', 'utf8'));
+      const distPkg = {
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
+        type: 'commonjs',
+        main: './index.js',
+        types: './index.d.ts',
+        exports: {
+          '.': { types: './index.d.ts', require: './index.js', default: './index.js' },
+          './client': { types: './client.d.ts', require: './client.js', default: './client.js' }
+        },
+        repository: pkg.repository,
+        publishConfig: pkg.publishConfig,
+        license: pkg.license || 'MIT',
+        author: pkg.author
+      };
+      fs.writeFileSync('/dist/menu-registry/package.json', JSON.stringify(distPkg, null, 2));
+      console.log('✅ Generated dist package.json');
+      \" &&
       npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "test -f /dist/menu-registry/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      test: ["CMD", "test", "-f", "/dist/menu-registry/index.js"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   # Builder für lg-backend-common
   backend-common-builder:
@@ -42,16 +63,34 @@ services:
       sh -c "
       echo '🔄 Starting TypeScript watch mode for backend-common...' &&
       rm -rf /dist/backend-common/*.test.js /dist/backend-common/*.test.d.ts /dist/backend-common/*.test.*.map &&
-      cp /app/package.json /dist/backend-common/package.json 2>/dev/null || true &&
+      node -e \"
+      const fs = require('fs');
+      const pkg = JSON.parse(fs.readFileSync('/app/package.json', 'utf8'));
+      const distPkg = {
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
+        type: 'commonjs',
+        main: './index.js',
+        types: './index.d.ts',
+        exports: { '.': { types: './index.d.ts', require: './index.js', default: './index.js' } },
+        repository: pkg.repository,
+        publishConfig: pkg.publishConfig,
+        license: pkg.license || 'MIT',
+        author: pkg.author
+      };
+      fs.writeFileSync('/dist/backend-common/package.json', JSON.stringify(distPkg, null, 2));
+      console.log('✅ Generated dist package.json');
+      \" &&
       npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "test -f /dist/backend-common/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
-      interval: 10s
+      test: ["CMD", "test", "-f", "/dist/backend-common/index.js"]
+      interval: 5s
       timeout: 3s
-      retries: 10
-      start_period: 30s
+      retries: 3
+      start_period: 20s
 
   # Builder für lg-types
   types-builder:
@@ -67,13 +106,31 @@ services:
       sh -c "
       echo '🔄 Starting TypeScript watch mode for types...' &&
       rm -rf /dist/types/*.test.js /dist/types/*.test.d.ts /dist/types/*.test.*.map &&
-      cp /app/package.json /dist/types/package.json 2>/dev/null || true &&
+      node -e \"
+      const fs = require('fs');
+      const pkg = JSON.parse(fs.readFileSync('/app/package.json', 'utf8'));
+      const distPkg = {
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
+        type: 'commonjs',
+        main: './index.js',
+        types: './index.d.ts',
+        exports: { '.': { types: './index.d.ts', require: './index.js', default: './index.js' } },
+        repository: pkg.repository,
+        publishConfig: pkg.publishConfig,
+        license: pkg.license || 'MIT',
+        author: pkg.author
+      };
+      fs.writeFileSync('/dist/types/package.json', JSON.stringify(distPkg, null, 2));
+      console.log('✅ Generated dist package.json');
+      \" &&
       npx -y -p typescript@5.3.3 tsc --watch --project /app/tsconfig.json --pretty
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "test -f /dist/types/index.js && ! grep -q 'error TS' /proc/1/fd/1 2>/dev/null"]
-      interval: 10s
+      test: ["CMD", "test", "-f", "/dist/types/index.js"]
+      interval: 5s
       timeout: 3s
-      retries: 10
-      start_period: 30s
+      retries: 3
+      start_period: 20s

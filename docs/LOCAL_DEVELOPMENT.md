@@ -161,6 +161,21 @@ volumes:
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
+### Testing
+
+**Verify package loading works:**
+```bash
+make dev-sync-test
+
+# Output:
+# ✅ Test 1: Direct path require (menu-registry)
+# ✅ Test 2: Check types
+# ✅ Test 3: Check backend-common
+# ✅ Test 4: Scoped package name resolution
+# ✅ Test 5: Check package.json type field
+# 🎉 All package loading tests passed!
+```
+
 ### Troubleshooting
 
 **"Changes not appearing"**
@@ -173,6 +188,9 @@ make dev-sync-logs PACKAGE=menu-registry
 
 # Restart builders
 make dev-sync-rebuild
+
+# Test package loading
+make dev-sync-test
 ```
 
 **"Builder crashed"**
