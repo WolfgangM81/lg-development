@@ -4,6 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## ⚡ QUICK RULES - LIES DAS ZUERST!
+
+**NIEMALS:**
+- ❌ npm/node auf dem Host ausführen → IMMER in Docker!
+- ❌ repos/ commiten → ist gitignored!
+- ❌ Aus ~/Projects/lg-* kopieren → nur via `make prepare`!
+
+**IMMER:**
+- ✅ npm in Docker: `docker run --rm -v $(pwd):/app -w /app node:20-alpine npm ...`
+- ✅ Oder make targets: `make test`, `make test-parallel`
+- ✅ Build/Publish in GitHub Actions (automatisch bei push)
+- ✅ repos/ sind git clones mit eigenem .git
+
+---
+
 ## 🎯 Projekt-Kontext
 
 **LG-Development** ist ein **Development Orchestrator** für das LicenseGuard Multi-Repo System.
@@ -49,7 +64,60 @@ gh repo clone WolfgangM81/lg-secrets-service
 
 ---
 
-## 🚨 KRITISCHE REGEL #2: REPOS/ IST GITIGNORED!
+## 🚨 KRITISCHE REGEL #2: NPM NIEMALS AUF DEM HOST!
+
+**ALLE npm/node Befehle MÜSSEN in Docker laufen, NIEMALS auf dem Host!**
+
+### ❌ NIEMALS AUF DEM HOST:
+```bash
+npm install    # FALSCH!
+npm test       # FALSCH!
+npm run build  # FALSCH!
+npm publish    # FALSCH!
+npm version    # FALSCH!
+```
+
+### ✅ IMMER IN DOCKER:
+```bash
+# Tests
+docker run --rm -v $(pwd):/app -w /app node:20-alpine npm test
+
+# Install
+docker run --rm -v $(pwd):/app -w /app node:20-alpine npm install
+
+# Version bump
+docker run --rm -v $(pwd):/app -w /app node:20-alpine npm version patch
+
+# Build (falls nötig lokal)
+docker run --rm -v $(pwd):/app -w /app node:20-alpine npm run build
+```
+
+### ✅ ODER ÜBER MAKE:
+```bash
+make test              # Nutzt Docker
+make test-parallel     # Nutzt Docker
+make test-watch SERVICE=lg-user-service  # Nutzt Docker
+```
+
+### ✅ ODER GITHUB ACTIONS (Production):
+```bash
+# Code ändern, committen, pushen
+git add .
+git commit -m "feat: neue funktion"
+git push  # ← GitHub Actions macht Build/Test/Publish in der Cloud!
+```
+
+**Warum?**
+- Konsistente Umgebung (keine "works on my machine")
+- Keine Node.js Installation auf dem Host nötig
+- Gleiche Umgebung wie Production (Docker)
+- Kein Konflikt mit anderen Projekten
+
+**Ausnahme:** `npm version` kann auf dem Host laufen wenn Node.js installiert ist, ABER besser in Docker!
+
+---
+
+## 🚨 KRITISCHE REGEL #3: REPOS/ IST GITIGNORED!
 
 **repos/** Verzeichnis ist in `.gitignore`!
 
@@ -611,8 +679,15 @@ cat repos/lg-user-service/.npmrc
 **Publish package to Verdaccio:**
 ```bash
 cd repos/lg-menu-registry
-npm login --registry http://localhost:4873
-npm publish --registry http://localhost:4873
+
+# In Docker (recommended)
+docker run --rm -it -v $(pwd):/app -w /app node:20-alpine sh -c "
+  npm login --registry http://host.docker.internal:4873
+  npm publish --registry http://host.docker.internal:4873
+"
+
+# Oder über make (publisht zu GitHub Packages)
+make publish-package PACKAGE=lg-menu-registry
 ```
 
 ---
