@@ -130,6 +130,138 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 ---
 
+### Frontend HMR (Vite - lg-admin)
+
+**Tool:** Vite (React)
+**Speed:** Instant (<100ms)
+**Scope:** Frontend components, React code
+
+**docker-compose.dev.yml Pattern:**
+
+```yaml
+services:
+  admin:
+    build:
+      context: ./repos
+      dockerfile: lg-admin/Dockerfile
+      target: development  # Vite dev server
+    volumes:
+      - ./repos/lg-admin/src:/app/src:ro         # Source code
+      - ./repos/lg-admin/index.html:/app/index.html:ro
+      - ./repos/lg-admin/vite.config.ts:/app/vite.config.ts:ro
+    environment:
+      NODE_ENV: development
+      VITE_HMR_HOST: localhost  # Important for Docker!
+      VITE_HMR_PORT: 3000
+    command: npm run dev  # Vite dev server with HMR
+    ports:
+      - "3000:3000"  # Expose for HMR WebSocket
+```
+
+**Dockerfile (Multi-Stage):**
+
+```dockerfile
+# Stage 1: Development (Vite HMR)
+FROM node:20-alpine AS development
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+# Stage 2: Production (Static Build)
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine AS production
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**vite.config.ts (wichtig für Docker HMR):**
+
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',  // Listen on all interfaces (Docker)
+    port: 3000,
+    hmr: {
+      host: 'localhost',  // Browser connects to localhost
+      port: 3000,
+    },
+    watch: {
+      usePolling: true,  // Für manche Docker Setups nötig
+      interval: 1000,
+    },
+  },
+})
+```
+
+**Troubleshooting Vite HMR:**
+
+**Problem:** HMR verbindet nicht (Browser: "disconnected from server")
+
+**Ursachen:**
+1. Port nicht exposed: `ports: - "3000:3000"`
+2. `hmr.host` falsch konfiguriert (sollte `localhost` sein)
+3. Firewall blockiert WebSocket Connection
+
+**Fix:**
+```bash
+# Check port is exposed
+docker port lg-platform-admin-1
+
+# Check logs for HMR errors
+docker logs lg-platform-admin-1 | grep HMR
+
+# Restart with build
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build admin
+```
+
+**Performance:**
+- Vite HMR: <100ms (instant updates)
+- Full Reload (wenn HMR fails): ~1-2s
+
+---
+
+### Unterschied: Frontend HMR vs Package Hot-Reload
+
+| Feature | Frontend HMR (Vite) | Package Hot-Reload |
+|---------|---------------------|---------------------|
+| **Tool** | Vite Dev Server | TypeScript Compiler + Docker Volume |
+| **Target** | React Components (lg-admin) | npm Packages (lg-menu-registry, etc.) |
+| **Speed** | <100ms (instant) | 2-3s (compile + restart) |
+| **Scope** | Single app | Multiple services |
+| **Reload** | In-browser (no page refresh) | Service restart required |
+| **Setup** | Standard Vite config | Custom builder containers |
+
+**Zusammenfassung:**
+- **Frontend HMR:** Für UI Development (lg-admin, lg-management)
+- **Package Hot-Reload:** Für Shared Package Development (lg-menu-registry, lg-backend-common, lg-types)
+
+Beide können **gleichzeitig aktiv** sein!
+
+```bash
+# Enable both:
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev-sync.yml up -d
+
+# Result:
+# - Frontend: Vite HMR (<100ms)
+# - Packages: Builder compiles + Service restart (2-3s)
+```
+
+---
+
 ## Docker Compose Best Practices
 
 ### Volume Mounts (KRITISCH!)
@@ -247,6 +379,340 @@ docker build lg-admin-shell
 ```
 
 Wenn "CACHED" fehlt → Dockerfile-Reihenfolge prüfen!
+
+---
+
+## Package Hot-Reload Architecture
+
+**Status:** ✅ Fully Implemented (2026-01-24)
+
+### Overview
+
+Das Package Hot-Reload System ermöglicht **~2-3 Sekunden Updates** für shared npm Packages (`lg-menu-registry`, `lg-backend-common`, `lg-types`) ohne npm publish Cycle.
+
+**Traditioneller Workflow:**
+1. Package Code ändern
+2. `npm run build` (30s)
+3. `npm version patch` (5s)
+4. `npm publish` (60s)
+5. Service: `npm install @wolfgangm81/lg-menu-registry@latest` (30s)
+6. Service restart (10s)
+**Total: ~2-3 Minuten**
+
+**Mit Hot-Reload:**
+1. Package Code ändern
+2. Auto-Compile (2-3s)
+3. Auto-Restart (1-2s)
+**Total: ~3-5 Sekunden** ⚡ (50x schneller!)
+
+---
+
+### Architecture: Builder Containers + Shared Volume
+
+#### Component Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  HOST: repos/lg-menu-registry/src/                         │
+│  (Developer edits TypeScript files)                        │
+└────────────────────┬────────────────────────────────────────┘
+                     │ Volume Mount (Read-Only)
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BUILDER CONTAINER: lg-builder-menu-registry               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ TypeScript Compiler (Watch Mode)                     │  │
+│  │ tsc --watch                                          │  │
+│  │ Detects changes → Compiles to .js + .d.ts          │  │
+│  └──────────────┬───────────────────────────────────────┘  │
+│                 │ Writes to                                 │
+│                 ▼                                           │
+│  /dist/menu-registry/   (.js + .d.ts files)              │
+└────────────────────┬────────────────────────────────────────┘
+                     │ Shared Docker Volume
+                     │ lg-package-builds:/dist
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  SERVICE CONTAINERS: menu-service, user-service, etc.      │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ NODE_PATH=/shared-packages/node_modules             │  │
+│  │ require('@wolfgangm81/lg-menu-registry')            │  │
+│  │ → Loads from /shared-packages/node_modules/...      │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Docker Compose Configuration
+
+**File:** `docker-compose.dev-sync.yml`
+
+```yaml
+volumes:
+  lg-package-builds:
+    # Shared volume for compiled packages
+
+services:
+  # Builder Container (one per package)
+  lg-builder-menu-registry:
+    build:
+      context: ./repos
+      dockerfile: lg-menu-registry/Dockerfile
+      target: builder  # Multi-stage: builder stage
+    volumes:
+      - ./repos/lg-menu-registry:/app:ro  # Source code (Read-Only)
+      - lg-package-builds:/dist           # Output (Write)
+    command: npm run build:watch  # tsc --watch
+    healthcheck:
+      test: |
+        test -f /dist/menu-registry/index.js &&
+        test -f /dist/menu-registry/index.d.ts &&
+        node -c /dist/menu-registry/index.js
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Service Container (consuming package)
+  menu-service:
+    volumes:
+      - lg-package-builds:/shared-packages:ro  # Read compiled packages
+    environment:
+      NODE_PATH: /shared-packages/node_modules:/app/node_modules
+    # Service now loads packages from /shared-packages/node_modules
+```
+
+---
+
+### How It Works
+
+**Step 1: Developer edits package source**
+```bash
+vi repos/lg-menu-registry/src/index.ts
+# Save file
+```
+
+**Step 2: Builder detects change**
+```
+lg-builder-menu-registry: File change detected: src/index.ts
+lg-builder-menu-registry: Starting incremental compilation...
+lg-builder-menu-registry: [2:14:23 PM] Found 0 errors. Watching for file changes.
+```
+
+**Step 3: Builder compiles to shared volume**
+```
+/dist/
+└── menu-registry/
+    ├── index.js        ← Compiled JavaScript
+    ├── index.d.ts      ← TypeScript declarations
+    └── package.json    ← Auto-generated package metadata
+```
+
+**Step 4: Health check validates build**
+```bash
+✅ index.js exists
+✅ index.d.ts exists
+✅ JavaScript syntax valid (node -c)
+```
+
+**Step 5: Watch script restarts affected services**
+```bash
+# Smart restart: Only menu-service (depends on menu-registry)
+docker-compose restart menu-service
+```
+
+**Step 6: Service loads new package version**
+```
+menu-service: Loading @wolfgangm81/lg-menu-registry from /shared-packages/node_modules
+menu-service: ✅ Package loaded successfully
+```
+
+**Total time:** ~2-3s (compile) + ~1-2s (restart) = **3-5s** ⚡
+
+---
+
+### Builder Container Pattern
+
+**Multi-Stage Dockerfile:**
+
+```dockerfile
+# Stage 1: Builder (for hot-reload)
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+CMD ["npm", "run", "build:watch"]
+# Outputs to /dist (mounted volume)
+
+# Stage 2: Production (for deployment)
+FROM node:20-alpine AS production
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+RUN npm install --production
+CMD ["npm", "start"]
+```
+
+**package.json scripts:**
+
+```json
+{
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch --preserveWatchOutput",
+    "dev": "npm run build:watch"
+  }
+}
+```
+
+---
+
+### Health Checks (Enhanced - Phase 1)
+
+Builder health checks verify **3 critical conditions:**
+
+1. ✅ **JavaScript file exists** (`index.js`)
+2. ✅ **TypeScript declarations exist** (`index.d.ts`)
+3. ✅ **JavaScript syntax valid** (`node -c index.js`)
+
+**Why this matters:**
+- Prevents broken packages from being loaded
+- Detects compilation failures instantly
+- Catches syntax errors before service restart
+
+**Check health:**
+```bash
+make dev-sync-status
+# Shows: Up (healthy) or Up (unhealthy)
+
+make dev-sync-check
+# Shows detailed error messages
+```
+
+---
+
+### Smart Service Restarts (Phase 3)
+
+**Dependency Mapping:** `scripts/dev/package-dependencies.json`
+
+```json
+{
+  "menu-registry": ["menu-service"],
+  "backend-common": ["user-service", "permissions-service", "api-keys-service",
+                     "secrets-service", "tour-service"],
+  "types": ["menu-service", "user-service", "permissions-service",
+            "api-keys-service", "secrets-service", "tour-service"]
+}
+```
+
+**Before optimization:**
+- Edit ANY package → Restart ALL 6 services (~10s)
+
+**After optimization:**
+- Edit `menu-registry` → Restart **1** service (~2s) - **6x faster!**
+- Edit `backend-common` → Restart **5** services (~6s)
+- Edit `types` → Restart **6** services (~10s - all depend on it)
+
+**Implementation:**
+```bash
+# Watch script automatically restarts only affected services
+./scripts/dev/watch-packages.sh
+# Uses jq to parse dependencies, fallback to restart all if jq missing
+```
+
+---
+
+### Volume Performance
+
+**Best Practices:**
+
+```yaml
+volumes:
+  # Source code: Read-Only (prevents accidental writes from container)
+  - ./repos/lg-menu-registry:/app:ro
+
+  # Build output: Read-Write (builder writes, services read)
+  - lg-package-builds:/dist
+
+  # macOS: Use :cached for better performance
+  - ./repos/lg-menu-registry:/app:ro,cached
+
+  # Linux: Usually not needed (native performance)
+```
+
+**Avoid:**
+- ❌ Mounting entire workspace (slow!)
+- ❌ Read-Write for source code (security risk)
+- ❌ Syncing node_modules (conflicts, huge size)
+
+---
+
+### Commands
+
+```bash
+# Enable hot-reload
+make dev-sync
+
+# Check status
+make dev-sync-status
+
+# View compilation logs
+make dev-sync-logs PACKAGE=menu-registry
+
+# Check for build errors
+make dev-sync-check
+
+# Live dashboard
+make dev-sync-dashboard
+
+# Performance metrics
+make dev-sync-metrics
+
+# Disable hot-reload
+make dev-normal
+```
+
+---
+
+### Troubleshooting
+
+See detailed troubleshooting in:
+- **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick fixes
+- **[GOTCHAS.md](./GOTCHAS.md#package-hot-reload-gotchas)** - Common pitfalls
+- **[CLAUDE.md](../CLAUDE.md#package-hot-reload-system)** - Complete documentation
+
+**Quick Checks:**
+
+```bash
+# Builders running?
+docker-compose -f docker-compose.dev-sync.yml ps
+
+# Volume contents?
+docker run --rm -v lg-package-builds:/data alpine ls -la /data
+
+# Service loading correct package?
+docker-compose exec menu-service npm list @wolfgangm81/lg-menu-registry
+```
+
+---
+
+### Performance Stats
+
+| Metric | Traditional | Hot-Reload | Improvement |
+|--------|-------------|------------|-------------|
+| **Package update cycle** | 2-3 min | 3-5s | **50x faster** |
+| **Build time** | 30s | 2-3s | **10x faster** |
+| **Service restart (targeted)** | N/A | 1-2s | **6x fewer restarts** |
+| **Developer feedback loop** | Minutes | Seconds | **Instant iteration** |
+
+---
+
+### See Also
+
+- **[OPTIMIZATION_SUMMARY.md](../OPTIMIZATION_SUMMARY.md)** - All 5 optimization phases
+- **[LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)** - Development workflow
+- **[docker-compose.dev-sync.yml](../docker-compose.dev-sync.yml)** - Full configuration
 
 ---
 

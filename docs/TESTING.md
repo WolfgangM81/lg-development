@@ -1,5 +1,72 @@
 # Testing Strategy - LicenseGuard Platform
 
+---
+
+## ⚠️ Test Watch vs. Code Hot-Reload - Unterschied
+
+**WICHTIG:** Dieses Dokument behandelt **Test Watch Mode** (Vitest), NICHT Code Hot-Reload!
+
+### Was ist der Unterschied?
+
+| Feature | Test Watch Mode | Code Hot-Reload |
+|---------|----------------|----------------|
+| **Zweck** | Tests neu laufen lassen bei Code-Änderungen | Package Code neu kompilieren und Services neu starten |
+| **Tool** | Vitest (`vitest --watch`) | TypeScript Compiler + Docker Volume |
+| **Scope** | Nur Tests | Production Code + Services |
+| **Speed** | Instant (in-memory) | ~2-3s (compile + restart) |
+| **Use Case** | TDD Workflow | Package Development |
+| **Docs** | Dieses Dokument | [HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md) |
+
+### Test Watch Mode (Dieses Dokument)
+
+```bash
+# Startet Vitest im Watch Mode
+make test-watch SERVICE=lg-user-service
+
+# Was passiert:
+# 1. Edit: src/routes/user.ts
+# 2. Vitest detects change
+# 3. Re-runs related tests
+# 4. Shows results instantly (in-memory)
+```
+
+**Use Case:** Test-Driven Development (TDD)
+- Schreibe Test → Test fails → Implementiere Code → Test passes
+- Instant Feedback Loop für Unit Tests
+
+### Code Hot-Reload (Andere Docs)
+
+```bash
+# Startet Package Hot-Reload System
+make dev-sync
+
+# Was passiert:
+# 1. Edit: repos/lg-menu-registry/src/index.ts
+# 2. Builder compiles package (~2-3s)
+# 3. Services restart automatically (~1-2s)
+# 4. Production code updated (not tests!)
+```
+
+**Use Case:** Package Development
+- Develop shared packages (lg-menu-registry, lg-backend-common, lg-types)
+- Test changes across multiple services
+- Avoid npm publish cycle
+
+**Siehe:**
+- **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick Reference
+- **[CLAUDE.md#package-hot-reload-system](../CLAUDE.md#package-hot-reload-system)** - Complete Docs
+- **[DOCKER.md#package-hot-reload-architecture](./DOCKER.md#package-hot-reload-architecture)** - Architecture
+
+---
+
+**Zusammenfassung:**
+- **Test Watch:** Tests re-run (Vitest)
+- **Code Hot-Reload:** Code re-compiles + Services restart (TypeScript + Docker)
+
+Beide sind nützlich, aber für unterschiedliche Zwecke!
+
+---
+
 ## Test Coverage Philosophie
 
 ### Realistische Coverage Targets (Recherchiert 2025)

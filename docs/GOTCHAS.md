@@ -83,4 +83,197 @@ docker-compose up -d --force-recreate admin  # Nutzt neues Image!
 
 ---
 
+## Package Hot-Reload Gotchas
+
+### 1. "Hot-Reload funktioniert nicht" - Builder läuft nicht
+
+**Symptome:**
+- Änderungen in `repos/lg-menu-registry/src/` werden nicht übernommen
+- Services laden alte Package-Versionen
+- `make dev-sync-status` zeigt keine Builder
+
+**Root Cause:**
+Builder Container nicht gestartet oder gestoppt.
+
+**Fix:**
+```bash
+make dev-sync          # Aktiviert Hot-Reload
+make dev-sync-status   # Prüft Builder Status
+```
+
+---
+
+### 2. Builder Health Check fehlgeschlagen
+
+**Symptome:**
+- `make dev-sync-status` zeigt "unhealthy"
+- Compilation funktioniert, aber Health Check fails
+- Logs zeigen "health check failed"
+
+**Mögliche Ursachen:**
+1. `.d.ts` Dateien fehlen (TypeScript declarations)
+2. JavaScript Syntax-Fehler
+3. Build-Artefakte korrupt
+
+**Fix:**
+```bash
+make dev-sync-check    # Zeigt detaillierte Fehler
+make dev-sync-logs PACKAGE=backend-common  # Volle Logs
+make dev-sync-rebuild  # Rebuild aller Builder
+```
+
+---
+
+### 3. Smart Restart funktioniert nicht - jq fehlt
+
+**Symptome:**
+- Alle 6 Services restarten bei jeder Änderung (langsam!)
+- Kein intelligenter Restart (nur betroffene Services)
+
+**Root Cause:**
+`jq` nicht installiert - Fallback auf "restart all services"
+
+**Fix:**
+```bash
+# macOS
+brew install jq
+
+# Linux
+apt-get install jq
+
+# Verify
+which jq  # Sollte Pfad anzeigen
+```
+
+**Fallback:** Funktioniert auch ohne jq, nur langsamer (alle Services werden restarted)
+
+---
+
+### 4. Volume Mount Issues - Permissions
+
+**Symptome:**
+- Builder kann nicht in `/dist` schreiben
+- Errors: "EACCES: permission denied"
+- Build succeeds, aber Dateien fehlen
+
+**Root Cause:**
+Docker Volume Permissions (Linux)
+
+**Fix:**
+```bash
+# Check Volume Ownership
+docker run --rm -v lg-package-builds:/data alpine ls -la /data
+
+# Fix permissions (falls nötig)
+docker run --rm -v lg-package-builds:/data alpine chown -R 1000:1000 /data
+
+# Rebuild
+make dev-sync-rebuild
+```
+
+---
+
+### 5. Änderungen werden nicht erkannt - Watch nicht aktiv
+
+**Symptome:**
+- Datei editiert, aber kein Rebuild
+- Logs zeigen keine Aktivität
+- Builder läuft, aber tut nichts
+
+**Root Cause:**
+TypeScript Compiler Watch Mode nicht aktiv oder gecrasht
+
+**Debug:**
+```bash
+make dev-sync-logs PACKAGE=menu-registry
+# Should show: "Starting compilation in watch mode..."
+# If not: Builder crashed or misconfigured
+```
+
+**Fix:**
+```bash
+make dev-sync-rebuild  # Rebuild Builder
+```
+
+---
+
+### 6. False Positives - Build erfolgreich, aber Fehler in Service
+
+**Symptome:**
+- `make dev-sync-check` zeigt ✅ (grün)
+- Service crashed oder lädt Package nicht
+- Runtime Error im Service
+
+**Root Cause:**
+- TypeScript compiled erfolgreich, aber Runtime Fehler
+- Package Versionskonflikt
+- Service cached alte Version
+
+**Fix:**
+```bash
+# Service neu starten (lädt Package fresh)
+docker-compose restart menu-service
+
+# Check Service Logs
+docker-compose logs -f menu-service
+
+# Check welche Package Version geladen
+docker-compose exec menu-service npm list @wolfgangm81/lg-menu-registry
+```
+
+---
+
+### 7. Dashboard nicht verfügbar - watch fehlt
+
+**Symptome:**
+- `make dev-sync-dashboard` zeigt Fehlermeldung
+- "watch: command not found"
+- Dashboard fällt auf manuelle Refresh zurück
+
+**Root Cause:**
+`watch` Utility nicht installiert (optional)
+
+**Fix:**
+```bash
+# macOS
+brew install watch
+
+# Linux (meist pre-installed)
+apt-get install procps
+
+# Fallback: Manuelle Refresh
+make dev-sync-status  # Einmalig, ohne Auto-Refresh
+```
+
+---
+
+### 8. Cache Issues - alte Artefakte
+
+**Symptome:**
+- Änderungen überschreiben sich nicht
+- Alte Versionen bleiben bestehen
+- Rebuild zeigt keine Wirkung
+
+**Root Cause:**
+Docker Volume cached alte Builds
+
+**Fix:**
+```bash
+make dev-sync-clean    # Löscht Build-Artefakte
+make dev-sync-rebuild  # Rebuild von Scratch
+
+# Nuclear Option (löscht ALLES):
+docker volume rm lg-package-builds
+make dev-sync          # Neu aufsetzen
+```
+
+---
+
+**Siehe auch:**
+- **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick Reference
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - General Troubleshooting
+- **[CLAUDE.md](../CLAUDE.md#package-hot-reload-system)** - Complete Hot-Reload Docs
+
+---
+
 **Key Takeaway:** Root Cause Analysis > Trial & Error!

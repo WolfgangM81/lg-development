@@ -440,3 +440,227 @@ Examples:
 - Gitlab development environment
 - HashiCorp development setups
 - Many enterprise Docker Compose stacks
+
+---
+
+## Development Overrides for Hot-Reload
+
+### Pattern: Base + Override Files
+
+**Problem:** Production und Development brauchen unterschiedliche Configs
+- **Production:** Minified builds, no volumes, optimized for deployment
+- **Development:** Hot-reload, volume mounts, debug logging
+
+**Solution:** Multi-file Compose Pattern
+
+```
+project/
+├── docker-compose.yml          # Base (production)
+├── docker-compose.dev.yml      # Development overrides
+└── docker-compose.dev-sync.yml # Package hot-reload (optional)
+```
+
+---
+
+### Example: Backend Service with Package Hot-Reload
+
+**Base: `docker-compose.yml`** (Production)
+
+```yaml
+services:
+  menu-service:
+    build:
+      context: ./repos
+      dockerfile: lg-menu-service/Dockerfile
+      target: production  # Multi-stage: production stage
+    environment:
+      NODE_ENV: production
+    command: npm start  # Uses compiled code
+    # No volumes (code baked into image)
+```
+
+**Override: `docker-compose.dev.yml`** (Development - HMR)
+
+```yaml
+# Development override for hot-reload (Nodemon/tsx watch)
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  menu-service:
+    build:
+      target: development  # Multi-stage: development stage
+    volumes:
+      - ./repos/lg-menu-service/src:/app/src:ro  # Source code (read-only)
+    environment:
+      NODE_ENV: development
+      DEBUG: '*'
+    command: npm run dev  # tsx watch or nodemon
+```
+
+**Package Hot-Reload: `docker-compose.dev-sync.yml`** (Advanced)
+
+```yaml
+# Package hot-reload override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev-sync.yml up -d
+# Or: make dev-sync
+
+services:
+  menu-service:
+    volumes:
+      # Add shared package volume (in addition to dev.yml volumes)
+      - lg-package-builds:/shared-packages:ro
+    environment:
+      # Extend NODE_PATH to include shared packages
+      NODE_PATH: /shared-packages/node_modules:/app/node_modules
+
+volumes:
+  lg-package-builds:
+    # Shared volume with builder containers
+```
+
+---
+
+### Usage
+
+**Production:**
+```bash
+docker-compose up -d
+# Uses only docker-compose.yml (production config)
+```
+
+**Development (Source HMR):**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# Or: make dev-up (if Makefile configured)
+# Enables: Source code volume mounts, Nodemon/tsx watch
+```
+
+**Development (Package Hot-Reload):**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev-sync.yml up -d
+# Or: make dev-sync
+# Enables: Package builders, shared volume, smart restarts
+```
+
+---
+
+### Real-World Example: lg-menu-service
+
+**File: `repos/lg-menu-service/docker-compose.dev.yml`**
+
+```yaml
+# Development override for lg-menu-service
+# Provides source code hot-reload via tsx watch
+
+services:
+  menu-service:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/app/src:ro              # Source code
+      - ./package.json:/app/package.json:ro  # Dependencies
+    environment:
+      NODE_ENV: development
+      DEBUG: 'lg:*'                    # Namespace logging
+      LOG_LEVEL: debug
+    command: npm run dev               # tsx watch src/index.ts
+```
+
+**How it works:**
+
+1. **Edit source:** `vi repos/lg-menu-service/src/routes/menu.ts`
+2. **tsx watch detects change** → Recompiles → Restarts
+3. **Total time:** ~1-2s
+
+---
+
+### Multi-Stage Dockerfile Pattern
+
+**Required for Override Pattern:**
+
+```dockerfile
+# Stage 1: Development
+FROM node:20-alpine AS development
+WORKDIR /app
+COPY package*.json ./
+RUN npm install  # Includes devDependencies
+COPY . .
+CMD ["npm", "run", "dev"]  # tsx watch or nodemon
+
+# Stage 2: Production
+FROM node:20-alpine AS production
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production  # No devDependencies
+COPY . .
+RUN npm run build  # Compile TypeScript
+CMD ["npm", "start"]  # Run compiled code
+```
+
+---
+
+### Best Practices
+
+1. **Always use multi-stage Dockerfiles**
+   - Separate `development` and `production` stages
+   - Development: Fast rebuilds, devDependencies
+   - Production: Optimized, minimal size
+
+2. **Keep base compose file clean (production-ready)**
+   - No dev-specific volumes or environment vars
+   - Deployable as-is
+
+3. **Use :ro (read-only) for source volumes**
+   - Prevents container from accidentally modifying source
+   - Security best practice
+
+4. **Document override files at the top**
+   ```yaml
+   # Development override for X
+   # Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+   ```
+
+5. **Use .env.dev.example for development env vars**
+   - Template for development environment
+   - Check into git (example only)
+   - Actual .env.dev in .gitignore
+
+---
+
+### Troubleshooting
+
+**Override not working?**
+
+```bash
+# View merged config
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml config
+
+# Check which files are loaded
+docker-compose config --services
+```
+
+**Volume mounts not syncing?**
+
+```bash
+# Check volume binds in container
+docker inspect menu-service | grep Mounts -A 20
+
+# Verify file exists in container
+docker exec menu-service ls -la /app/src
+```
+
+**Build target not respected?**
+
+```bash
+# Force rebuild with correct target
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache menu-service
+```
+
+---
+
+### See Also
+
+- **[DOCKER.md#package-hot-reload-architecture](./DOCKER.md#package-hot-reload-architecture)** - Package builder pattern
+- **[LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)** - Development workflow
+- **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick reference

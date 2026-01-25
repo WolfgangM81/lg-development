@@ -440,3 +440,365 @@ docker build . | grep CACHED
 - **[DOCKER.md](./DOCKER.md)** - Docker Best Practices, Dockerfile Patterns
 - **[TESTING.md](./TESTING.md)** - Test Setup, Coverage, E2E Tests
 - **[CLAUDE.md](./CLAUDE.md)** - Projekt-Konfiguration, Workflows
+
+---
+
+## 🐛 Hot-Reload Debugging Checklist
+
+Systematische Fehlersuche für Package Hot-Reload Probleme.
+
+---
+
+### Level 1: Quick Checks (30 seconds)
+
+**Run these first:**
+
+```bash
+# 1. Builders running?
+make dev-sync-status
+# Expected: All builders "Up (healthy)"
+
+# 2. Any build errors?
+make dev-sync-check
+# Expected: ✅ for all packages
+
+# 3. Recent logs (last 20 lines)
+make dev-sync-logs PACKAGE=menu-registry
+# Expected: "Watching for file changes" or "Found 0 errors"
+```
+
+**If all green → Problem is NOT with hot-reload system!**
+
+---
+
+### Level 2: Service-Specific Checks (1 minute)
+
+**If a specific service isn't loading new packages:**
+
+```bash
+# 1. Which package version is service using?
+docker-compose exec menu-service npm list @wolfgangm81/lg-menu-registry
+# Expected: Symlink to /shared-packages/node_modules/...
+
+# 2. Is volume mounted correctly?
+docker inspect menu-service | grep -A 10 Mounts | grep lg-package-builds
+# Expected: lg-package-builds:/shared-packages (read-only)
+
+# 3. Is NODE_PATH set correctly?
+docker-compose exec menu-service printenv NODE_PATH
+# Expected: /shared-packages/node_modules:/app/node_modules
+
+# 4. Restart service manually
+docker-compose restart menu-service
+```
+
+---
+
+### Level 3: Volume Checks (2 minutes)
+
+**If builds succeed but services don't see changes:**
+
+```bash
+# 1. Volume contents exist?
+docker run --rm -v lg-package-builds:/data alpine ls -la /data
+# Expected: menu-registry/, backend-common/, types/ directories
+
+# 2. Compiled files exist?
+docker run --rm -v lg-package-builds:/data alpine ls -la /data/menu-registry
+# Expected: index.js, index.d.ts, package.json
+
+# 3. File permissions OK?
+docker run --rm -v lg-package-builds:/data alpine stat /data/menu-registry/index.js
+# Expected: Access: (0644/-rw-r--r--)
+
+# 4. File contents look correct?
+docker run --rm -v lg-package-builds:/data alpine head -20 /data/menu-registry/index.js
+# Expected: Valid JavaScript code
+```
+
+---
+
+### Level 4: Builder Checks (3 minutes)
+
+**If health checks fail:**
+
+```bash
+# 1. Builder logs (full)
+docker-compose -f docker-compose.dev-sync.yml logs lg-builder-menu-registry | tail -100
+
+# 2. Builder process running?
+docker-compose -f docker-compose.dev-sync.yml exec lg-builder-menu-registry ps aux
+# Expected: npm run build:watch or tsc --watch
+
+# 3. Health check command manually
+docker-compose -f docker-compose.dev-sync.yml exec lg-builder-menu-registry sh -c '
+  test -f /dist/menu-registry/index.js &&
+  test -f /dist/menu-registry/index.d.ts &&
+  node -c /dist/menu-registry/index.js &&
+  echo "✅ Health check passed"
+'
+
+# 4. Rebuild builder from scratch
+docker-compose -f docker-compose.dev-sync.yml stop lg-builder-menu-registry
+docker-compose -f docker-compose.dev-sync.yml rm -f lg-builder-menu-registry
+docker-compose -f docker-compose.dev-sync.yml up -d --build lg-builder-menu-registry
+```
+
+---
+
+### Level 5: Source Code Checks (2 minutes)
+
+**If watch isn't detecting changes:**
+
+```bash
+# 1. Source files mounted correctly?
+docker-compose -f docker-compose.dev-sync.yml exec lg-builder-menu-registry ls -la /app/src
+# Expected: TypeScript source files
+
+# 2. Test file write (from host)
+echo "// test" >> repos/lg-menu-registry/src/index.ts
+# Check builder logs for activity:
+make dev-sync-logs PACKAGE=menu-registry
+# Expected: "File change detected" within 1-2 seconds
+
+# 3. Revert test change
+git checkout repos/lg-menu-registry/src/index.ts
+
+# 4. Check .dockerignore (shouldn't ignore src/)
+cat repos/lg-menu-registry/.dockerignore | grep src
+# Expected: src/ NOT in ignore list
+```
+
+---
+
+### Level 6: Configuration Checks (3 minutes)
+
+**If setup seems broken:**
+
+```bash
+# 1. docker-compose.dev-sync.yml valid?
+docker-compose -f docker-compose.dev-sync.yml config | grep -A 20 lg-builder-menu-registry
+# Expected: Valid YAML, no errors
+
+# 2. package.json has build:watch script?
+cat repos/lg-menu-registry/package.json | jq '.scripts["build:watch"]'
+# Expected: "tsc --watch" or similar
+
+# 3. tsconfig.json valid?
+cd repos/lg-menu-registry && npx tsc --showConfig
+# Expected: Valid config, no errors
+
+# 4. Dependency mapping exists?
+cat scripts/dev/package-dependencies.json | jq '.["menu-registry"]'
+# Expected: ["menu-service"]
+```
+
+---
+
+### Level 7: Network & Communication (2 minutes)
+
+**If services can't communicate:**
+
+```bash
+# 1. Services on same network?
+docker network inspect lg-development_default | jq '.[0].Containers'
+# Expected: All services + builders listed
+
+# 2. Service can reach builder volume?
+docker-compose exec menu-service ls -la /shared-packages/node_modules/@wolfgangm81
+# Expected: Symlinks to package directories
+
+# 3. Test package import in service
+docker-compose exec menu-service node -e "
+  const pkg = require('@wolfgangm81/lg-menu-registry');
+  console.log('✅ Package loaded:', Object.keys(pkg));
+"
+# Expected: Package exports listed
+```
+
+---
+
+### Level 8: Clean Slate (5 minutes)
+
+**Nuclear option: Rebuild everything**
+
+```bash
+# 1. Stop all
+docker-compose down
+docker-compose -f docker-compose.dev-sync.yml down
+
+# 2. Remove volume
+docker volume rm lg-package-builds
+
+# 3. Remove builder images
+docker rmi lg-development-lg-builder-menu-registry
+docker rmi lg-development-lg-builder-backend-common
+docker rmi lg-development-lg-builder-types
+
+# 4. Clean build artifacts
+rm -rf repos/lg-menu-registry/dist
+rm -rf repos/lg-backend-common/dist
+rm -rf repos/lg-types/dist
+
+# 5. Rebuild from scratch
+make dev-sync
+# Wait for all builders healthy (~30s)
+
+# 6. Verify
+make dev-sync-check
+make dev-sync-dashboard
+```
+
+---
+
+### Common Error Messages & Solutions
+
+#### "health check failed"
+
+**Error:**
+```
+lg-builder-menu-registry health_status=unhealthy
+```
+
+**Debug:**
+```bash
+make dev-sync-logs PACKAGE=menu-registry
+# Look for TypeScript errors, missing files
+```
+
+**Fix:**
+1. Fix TypeScript errors in source
+2. If no errors, rebuild: `make dev-sync-rebuild`
+
+---
+
+#### "EACCES: permission denied"
+
+**Error:**
+```
+Error: EACCES: permission denied, open '/dist/menu-registry/index.js'
+```
+
+**Debug:**
+```bash
+# Check volume ownership
+docker run --rm -v lg-package-builds:/data alpine ls -la /data
+```
+
+**Fix:**
+```bash
+# Fix permissions (Linux)
+docker run --rm -v lg-package-builds:/data alpine chown -R 1000:1000 /data
+make dev-sync-rebuild
+```
+
+---
+
+#### "Cannot find module '@wolfgangm81/lg-menu-registry'"
+
+**Error:**
+```
+Error: Cannot find module '@wolfgangm81/lg-menu-registry'
+```
+
+**Debug:**
+```bash
+# Check NODE_PATH
+docker-compose exec menu-service printenv NODE_PATH
+
+# Check volume mount
+docker inspect menu-service | grep lg-package-builds
+
+# Check package exists
+docker run --rm -v lg-package-builds:/data alpine ls /data/menu-registry
+```
+
+**Fix:**
+```bash
+# Ensure NODE_PATH includes /shared-packages/node_modules
+# Check docker-compose.dev-sync.yml:
+#   environment:
+#     NODE_PATH: /shared-packages/node_modules:/app/node_modules
+
+# Restart service
+docker-compose restart menu-service
+```
+
+---
+
+#### "File change detected" but no rebuild
+
+**Error:**
+```
+File change detected: src/index.ts
+(nothing happens after this)
+```
+
+**Debug:**
+```bash
+# Builder process crashed?
+docker-compose -f docker-compose.dev-sync.yml exec lg-builder-menu-registry ps aux
+```
+
+**Fix:**
+```bash
+# Restart builder
+make dev-sync-rebuild
+```
+
+---
+
+### Debugging Tools Summary
+
+| Tool | Command | Use Case |
+|------|---------|----------|
+| **Status** | `make dev-sync-status` | Quick health check |
+| **Errors** | `make dev-sync-check` | Detailed build errors |
+| **Logs** | `make dev-sync-logs PACKAGE=name` | Full compilation logs |
+| **Dashboard** | `make dev-sync-dashboard` | Real-time monitoring |
+| **Metrics** | `make dev-sync-metrics` | Performance trends |
+| **Volume** | `docker volume inspect lg-package-builds` | Volume details |
+| **Inspect** | `docker inspect <container>` | Container config |
+| **Config** | `docker-compose config` | Merged compose config |
+
+---
+
+### When to Ask for Help
+
+If after Level 8 (Clean Slate) it still doesn't work:
+
+1. **Gather debug info:**
+   ```bash
+   # Create debug report
+   {
+     echo "=== Status ==="
+     make dev-sync-status
+     echo ""
+     echo "=== Check ==="
+     make dev-sync-check
+     echo ""
+     echo "=== Builder Logs (last 50 lines) ==="
+     make dev-sync-logs PACKAGE=menu-registry | tail -50
+     echo ""
+     echo "=== Service Logs (last 50 lines) ==="
+     docker-compose logs --tail=50 menu-service
+     echo ""
+     echo "=== Volume Contents ==="
+     docker run --rm -v lg-package-builds:/data alpine ls -laR /data
+   } > hot-reload-debug.txt
+   ```
+
+2. **Share debug report** in issue or chat
+
+3. **Check documentation:**
+   - [GOTCHAS.md#package-hot-reload-gotchas](./GOTCHAS.md#package-hot-reload-gotchas)
+   - [HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)
+   - [CLAUDE.md#package-hot-reload-system](../CLAUDE.md#package-hot-reload-system)
+
+---
+
+### See Also
+
+- **[GOTCHAS.md](./GOTCHAS.md)** - Common pitfalls
+- **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick reference
+- **[DOCKER.md#package-hot-reload-architecture](./DOCKER.md#package-hot-reload-architecture)** - Architecture details
