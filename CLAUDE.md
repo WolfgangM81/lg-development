@@ -785,6 +785,201 @@ git pull origin main
 
 ---
 
+## 📚 Documentation Maintenance Responsibilities
+
+**CRITICAL:** Claude MUST update documentation when making code changes!
+
+### Documentation Structure
+
+```
+lg-development/
+├── docs/
+│   ├── ARCHITECTURE.md          # System-wide architecture
+│   ├── DEPENDENCIES.md          # Package dependency graph
+│   ├── DOCKER.md                # Docker patterns
+│   ├── TESTING.md               # Testing strategy
+│   └── ...
+├── repos/
+│   ├── services/<service-name>/
+│   │   ├── ARCHITECTURE.md      # Service architecture
+│   │   ├── CLAUDE.md           # AI guidelines (includes doc maintenance)
+│   │   └── README.md           # User documentation
+│   ├── packages/<package-name>/
+│   │   ├── CLAUDE.md           # Package guidelines
+│   │   └── README.md
+│   └── ui/<app-name>/
+│       ├── CLAUDE.md
+│       └── README.md
+├── CLAUDE.md                   # Root guidelines (this file)
+├── HOT_RELOAD_QUICK_REF.md    # Quick reference
+└── README.md                   # Project overview
+```
+
+---
+
+### When to Update Documentation
+
+#### 1. Code Changes Require Doc Updates
+
+**Trigger:** Any code modification that affects:
+- API endpoints (add/modify/remove)
+- Database schema (tables, columns, relationships)
+- Service dependencies (new imports, external calls)
+- Configuration (environment variables, settings)
+- Architecture (new services, packages, components)
+
+**Action:** Update corresponding documentation in the SAME commit.
+
+---
+
+#### 2. API Endpoint Changes
+
+**If you add/modify/remove an endpoint:**
+
+1. **Update `repos/services/<service>/ARCHITECTURE.md`:**
+   - API Endpoints table
+   - Communication diagram (if changes communication flow)
+   - Example requests/responses
+
+2. **Commit message:**
+   ```
+   feat(menu-service): Add bulk menu creation endpoint
+
+   - Add POST /menu/bulk endpoint
+   - Update ARCHITECTURE.md: API Endpoints table
+   - Update ARCHITECTURE.md: Bulk creation sequence diagram
+   ```
+
+---
+
+#### 3. Database Schema Changes
+
+**If you modify database schema:**
+
+1. **Update `repos/services/<service>/ARCHITECTURE.md`:**
+   - Database Schema diagram (Mermaid ERD)
+   - Data models section
+
+2. **Also update:**
+   - Migration files (code)
+   - Model definitions (code)
+   - ARCHITECTURE.md (documentation)
+
+---
+
+#### 4. Service Dependencies Changes
+
+**If you add a new service-to-service call:**
+
+1. **Update `repos/services/<service>/ARCHITECTURE.md`:**
+   - Communication Plan → Outbound Communication table
+   - Service Dependencies diagram
+
+2. **Update sequence diagram** showing new communication flow
+
+---
+
+#### 5. Shared Package Changes
+
+**If you modify `lg-backend-common`, `lg-types`, `lg-menu-registry`:**
+
+1. **Update `docs/DEPENDENCIES.md`:**
+   - Package Dependency Graph (if new dependencies)
+
+2. **Update ALL consuming services' `CLAUDE.md`:**
+   - Shared Packages section (usage examples)
+
+---
+
+#### 6. Architecture Changes
+
+**If you add a new service, package, or major component:**
+
+1. **Update `docs/ARCHITECTURE.md`:**
+   - System Architecture Overview diagram
+
+2. **Create service documentation:**
+   - `repos/services/<new-service>/ARCHITECTURE.md`
+   - `repos/services/<new-service>/CLAUDE.md`
+   - `repos/services/<new-service>/README.md`
+
+3. **Update `docs/DEPENDENCIES.md`:**
+   - Package Dependency Graph
+
+---
+
+### Documentation Update Workflow
+
+**Step-by-Step Process:**
+
+1. **Make Code Changes**
+   ```bash
+   vi repos/services/lg-menu-service/src/routes/menu.ts
+   # Add new endpoint
+   ```
+
+2. **Update Documentation (BEFORE committing)**
+   ```bash
+   vi repos/services/lg-menu-service/ARCHITECTURE.md
+   # Add endpoint to API Endpoints table
+   # Add/update sequence diagram if needed
+   ```
+
+3. **Commit Code + Docs Together**
+   ```bash
+   git add repos/services/lg-menu-service/src/routes/menu.ts
+   git add repos/services/lg-menu-service/ARCHITECTURE.md
+   git commit -m "feat(menu-service): Add bulk menu creation
+
+   - Add POST /menu/bulk endpoint
+   - Update ARCHITECTURE.md: API Endpoints table
+   - Update ARCHITECTURE.md: Bulk creation sequence diagram
+   - Add unit tests for bulk creation
+   "
+   ```
+
+---
+
+### Documentation Quality Standards
+
+**Mermaid Diagrams:**
+- ✅ Use consistent styling (colors for layers)
+- ✅ Keep diagrams simple (max 10-15 nodes)
+- ✅ Add legends if needed
+- ✅ Test rendering before commit (use https://mermaid.live/)
+
+**API Documentation:**
+- ✅ Include request/response examples
+- ✅ Document all parameters
+- ✅ Show authentication requirements
+- ✅ Add error codes
+
+**Architecture Diagrams:**
+- ✅ Show clear boundaries (frontend/backend/data)
+- ✅ Use standard notation (arrows for data flow)
+- ✅ Include all dependencies
+- ✅ Keep up-to-date with code
+
+---
+
+### Common Documentation Mistakes
+
+❌ **Don't:**
+- Commit code without updating docs
+- Update docs in separate commit (should be together)
+- Leave outdated examples in CLAUDE.md
+- Break Mermaid diagrams (test before commit)
+- Forget to update Communication Plan when adding service calls
+
+✅ **Do:**
+- Commit code + docs together
+- Test Mermaid diagrams render correctly
+- Update ALL affected documentation files
+- Keep examples in sync with code
+- Use clear commit messages explaining doc changes
+
+---
+
 ## 🎯 Typische Tasks
 
 ### Task 1: "Start Development Environment"

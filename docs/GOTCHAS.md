@@ -269,6 +269,98 @@ make dev-sync          # Neu aufsetzen
 
 ---
 
+## 🐳 Docker Compose: `version:` Attribut ist obsolet
+
+### Problem
+
+```yaml
+# ❌ WARNING: the attribute `version` is obsolete
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.0
+```
+
+**Symptom:** Docker Compose zeigt Warning beim Starten:
+```
+time="2026-01-25T13:49:42+01:00" level=warning msg="/path/to/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+```
+
+**Root Cause:** Seit **Docker Compose v2** (2020) ist das `version:` Attribut nicht mehr notwendig und wird ignoriert. Die Compose Spec ist jetzt unabhängig von der Version.
+
+### Lösung
+
+```yaml
+# ✅ RICHTIG - Kein version: Attribut
+services:
+  traefik:
+    image: traefik:v3.0
+    ports:
+      - "80:80"
+```
+
+**Warum entfernen?**
+- Docker Compose erkennt automatisch die Spec-Features
+- Vermeidet verwirrende Warnings
+- Moderne Best Practice (seit 2020)
+
+### Fix in allen docker-compose Dateien
+
+**Betroffene Dateien:**
+```bash
+# Alle docker-compose.yml Dateien prüfen
+find . -name "docker-compose*.yml" -exec grep -l "^version:" {} \;
+
+# In jedem File:
+# 1. Erste Zeile "version: '3.8'" entfernen
+# 2. Datei speichern
+# 3. Docker Compose neu starten
+```
+
+**Beispiel:**
+```diff
+- version: '3.8'
+-
+  services:
+    traefik:
+      image: traefik:v3.0
+```
+
+### Warum taucht das Problem auf?
+
+**Historisch:**
+- Docker Compose v1: `version: '3'` war **mandatory**
+- Docker Compose v2 (2020): `version:` wurde **optional**
+- Docker Compose v2 (2023): `version:` wurde **deprecated**
+
+**Aktuell (2026):**
+- `version:` wird komplett ignoriert
+- Führt zu Warnings aber NICHT zu Fehlern
+- Best Practice: Komplett weglassen
+
+### Nachhaltige Lösung
+
+**1. Template aktualisieren:**
+```bash
+# In templates/docker-compose.template.yml (falls vorhanden)
+# version: Zeile entfernen
+```
+
+**2. Service-Repos aktualisieren:**
+```bash
+# In jedem Service-Repo (lg-*-service, lg-infrastructure/*)
+# docker-compose.yml editieren
+# version: Zeile entfernen
+# Committen
+```
+
+**3. Dokumentation:**
+- In [DOCKER.md](./DOCKER.md) Best Practices dokumentieren
+- In [GOTCHAS.md](./GOTCHAS.md) erklären (✅ DONE)
+
+---
+
 **Siehe auch:**
 - **[HOT_RELOAD_QUICK_REF.md](../HOT_RELOAD_QUICK_REF.md)** - Quick Reference
 - **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - General Troubleshooting

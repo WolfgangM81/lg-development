@@ -18,20 +18,25 @@ echo ""
 
 cd repos
 
-for dir in */; do
-    if [ -d "$dir/.git" ]; then
-        cd "$dir"
-        BRANCH=$(git branch --show-current)
-        
-        if [[ -n $(git status -s) ]]; then
-            echo -e "${YELLOW}⚠️  ${dir%/} [${BRANCH}] - HAS CHANGES${NC}"
-            git status -s | head -5
-        else
-            echo -e "${GREEN}✅ ${dir%/} [${BRANCH}] - CLEAN${NC}"
-        fi
-        
-        cd ..
-        echo ""
+# Iterate over category directories (services, packages, ui, infrastructure)
+for category in services packages ui infrastructure; do
+    if [ -d "$category" ]; then
+        for dir in $category/*/; do
+            if [ -d "$dir/.git" ]; then
+                cd "$dir"
+                BRANCH=$(git branch --show-current)
+
+                if [[ -n $(git status -s) ]]; then
+                    echo -e "${YELLOW}⚠️  ${dir#*/} [${BRANCH}] - HAS CHANGES${NC}"
+                    git status -s | head -5
+                else
+                    echo -e "${GREEN}✅ ${dir#*/} [${BRANCH}] - CLEAN${NC}"
+                fi
+
+                cd ../..
+                echo ""
+            fi
+        done
     fi
 done
 

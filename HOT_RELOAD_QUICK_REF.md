@@ -14,7 +14,7 @@ make dev-sync
 make dev-sync-dashboard
 
 # Edit a package and watch it compile in ~2-3 seconds
-vi repos/lg-menu-registry/src/index.ts
+vi repos/packages/lg-menu-registry/src/index.ts
 ```
 
 ---
@@ -166,7 +166,7 @@ make dev-sync-check  # Shows detailed errors
 make dev-sync-dashboard
 
 # Terminal 2: Development
-vi repos/lg-menu-registry/src/index.ts
+vi repos/packages/lg-menu-registry/src/index.ts
 ```
 
 ### 2. Check Builds Before Commit
@@ -238,7 +238,7 @@ make dev-sync
 make dev-sync-dashboard  # Keep this open
 
 # 2. Make changes
-vi repos/lg-menu-registry/src/menu-types.ts
+vi repos/packages/lg-menu-registry/src/menu-types.ts
 
 # 3. Watch dashboard show:
 #    ✅ menu-registry: Found 0 errors. Watching...
@@ -268,7 +268,7 @@ vi ~/Projects/lg-menu-registry/src/index.ts  # Wrong!
 ✅ **Do this:**
 ```bash
 # Edit inside lg-development/repos/
-vi repos/lg-menu-registry/src/index.ts  # Correct!
+vi repos/packages/lg-menu-registry/src/index.ts  # Correct!
 ```
 
 ---
@@ -282,7 +282,7 @@ git add repos/  # Wrong! (gitignored)
 ✅ **Do this:**
 ```bash
 # Commit inside each package repo
-cd repos/lg-menu-registry
+cd repos/packages/lg-menu-registry
 git add .
 git commit -m "feat: new feature"
 git push

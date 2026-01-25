@@ -1,5 +1,8 @@
-# Repos directory (Git clones)
-repos/
+# Repos directory - ignore project Git clones, but keep category READMEs
+repos/services/lg-*/
+repos/packages/lg-*/
+repos/ui/lg-*/
+repos/infrastructure/lg-*/
 
 # Projects directory (Symlinks to local projects)
 projects/

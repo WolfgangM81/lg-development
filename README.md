@@ -56,7 +56,7 @@ make dev-sync
 make dev-sync-dashboard
 
 # Package bearbeiten - wird automatisch kompiliert
-vi repos/lg-menu-registry/src/index.ts
+vi repos/packages/lg-menu-registry/src/index.ts
 
 # Services werden automatisch restartet (nur betroffene!)
 # ✅ menu-registry → nur menu-service restartet (6x schneller!)
@@ -148,15 +148,35 @@ lg-development/
 ├── .dependency-graph.json     # Auto-generated dependency map
 ├── .migration-order.txt        # Level-based migration order
 ├── repos/                      # Copied & prepared projects (gitignored)
-│   ├── lg-platform/
-│   ├── lg-management/
-│   └── ...
-├── scripts/                    # 8 automation scripts
-│   ├── migrate.sh              # Master wizard (7 steps)
-│   ├── analyze-dependencies.sh
-│   ├── copy-all.sh
-│   ├── health-check.sh
-│   └── ...
+│   ├── services/               # Backend microservices
+│   │   ├── lg-api-keys-service/
+│   │   ├── lg-menu-service/
+│   │   ├── lg-permissions-service/
+│   │   ├── lg-secrets-service/
+│   │   ├── lg-tour-service/
+│   │   └── lg-user-service/
+│   ├── packages/               # Shared npm packages
+│   │   ├── lg-admin-ui/
+│   │   ├── lg-backend-common/
+│   │   ├── lg-menu-registry/
+│   │   └── lg-types/
+│   ├── ui/                     # Frontend applications
+│   │   └── lg-admin/
+│   └── infrastructure/         # Infrastructure components
+│       ├── lg-dynamodb/
+│       ├── lg-postgres/
+│       ├── lg-redis/
+│       ├── lg-traefik/
+│       └── lg-verdaccio/
+├── scripts/                    # Automation scripts
+│   ├── dev/                    # Development workflow
+│   │   ├── start.sh
+│   │   ├── stop.sh
+│   │   ├── status.sh
+│   │   └── ...
+│   └── migration/              # Migration tools
+│       ├── migrate.sh
+│       └── ...
 └── templates/                  # .npmrc, Workflows, Dockerfiles
 ```
 
@@ -178,10 +198,10 @@ lg-development/
 ./scripts/copy-all.sh
 
 # Or copy individual project
-./scripts/copy-project.sh --source ../lg-admin-ui --dest repos/lg-admin-ui
+./scripts/copy-project.sh --source ../lg-admin-ui --dest repos/packages/lg-admin-ui
 
 # Prepare with templates
-./scripts/prepare-repo.sh repos/lg-admin-ui --type library
+./scripts/prepare-repo.sh repos/packages/lg-admin-ui --type library
 ```
 
 ### GitHub Operations

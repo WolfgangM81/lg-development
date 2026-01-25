@@ -9,9 +9,9 @@ services:
     container_name: lg-builder-menu-registry
     working_dir: /app
     volumes:
-      - ./repos/lg-menu-registry/src:/app/src:ro
-      - ./repos/lg-menu-registry/tsconfig.build.json:/app/tsconfig.json:ro
-      - ./repos/lg-menu-registry/package.json:/app/package.json:ro
+      - ./repos/packages/lg-menu-registry/src:/app/src:ro
+      - ./repos/packages/lg-menu-registry/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/packages/lg-menu-registry/package.json:/app/package.json:ro
       - lg-packages-dist:/dist
     command: >
       sh -c "
@@ -55,9 +55,9 @@ services:
     container_name: lg-builder-backend-common
     working_dir: /app
     volumes:
-      - ./repos/lg-backend-common/src:/app/src:ro
-      - ./repos/lg-backend-common/tsconfig.build.json:/app/tsconfig.json:ro
-      - ./repos/lg-backend-common/package.json:/app/package.json:ro
+      - ./repos/packages/lg-backend-common/src:/app/src:ro
+      - ./repos/packages/lg-backend-common/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/packages/lg-backend-common/package.json:/app/package.json:ro
       - lg-packages-dist:/dist
     command: >
       sh -c "
@@ -98,9 +98,9 @@ services:
     container_name: lg-builder-types
     working_dir: /app
     volumes:
-      - ./repos/lg-types/src:/app/src:ro
-      - ./repos/lg-types/tsconfig.build.json:/app/tsconfig.json:ro
-      - ./repos/lg-types/package.json:/app/package.json:ro
+      - ./repos/packages/lg-types/src:/app/src:ro
+      - ./repos/packages/lg-types/tsconfig.build.json:/app/tsconfig.json:ro
+      - ./repos/packages/lg-types/package.json:/app/package.json:ro
       - lg-packages-dist:/dist
     command: >
       sh -c "
