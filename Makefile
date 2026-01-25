@@ -2,7 +2,7 @@
 #
 # Main orchestration for multi-repo Docker Compose setup
 
-.PHONY: help setup prepare start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test
+.PHONY: help setup prepare start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test dev-sync-check dev-sync-dashboard dev-sync-metrics dev-sync-metrics-watch dev-sync-metrics-reset
 
 # Load environment variables
 -include .env
@@ -60,8 +60,13 @@ help:
 	@echo "  make dev-sync-logs PACKAGE=name    - View compilation logs"
 	@echo "  make dev-sync-rebuild              - Restart all builders"
 	@echo "  make dev-sync-clean                - Clean build artifacts"
-	@echo "  make dev-sync-watch                - Watch & auto-restart services"
+	@echo "  make dev-sync-watch                - Watch & auto-restart services (smart)"
 	@echo "  make dev-sync-test                 - Test package loading (verify works)"
+	@echo "  make dev-sync-check                - Verify build integrity & errors"
+	@echo "  make dev-sync-dashboard            - Live dashboard (real-time status)"
+	@echo "  make dev-sync-metrics              - Show build performance metrics"
+	@echo "  make dev-sync-metrics-watch        - Watch & track build performance"
+	@echo "  make dev-sync-metrics-reset        - Clear performance metrics"
 	@echo ""
 	@echo "$(GREEN)GitHub Registry Setup:$(NC)"
 	@echo "  make setup-github-registry      - Configure .npmrc for all repos"
@@ -356,3 +361,39 @@ dev-sync-test:
 		exit 1; \
 	fi
 	@./scripts/dev/test-package-loading.sh
+
+# Check build integrity
+dev-sync-check:
+	@./scripts/dev/sync-packages.sh check
+
+# Live dashboard
+dev-sync-dashboard:
+	@if [ ! -f scripts/dev/dev-sync-dashboard.sh ]; then \
+		echo "$(RED)❌ scripts/dev/dev-sync-dashboard.sh not found!$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/dev/dev-sync-dashboard.sh
+
+# Build performance metrics
+dev-sync-metrics:
+	@if [ ! -f scripts/dev/build-metrics.sh ]; then \
+		echo "$(RED)❌ scripts/dev/build-metrics.sh not found!$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/dev/build-metrics.sh show
+
+# Watch build performance
+dev-sync-metrics-watch:
+	@if [ ! -f scripts/dev/build-metrics.sh ]; then \
+		echo "$(RED)❌ scripts/dev/build-metrics.sh not found!$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/dev/build-metrics.sh watch
+
+# Reset build metrics
+dev-sync-metrics-reset:
+	@if [ ! -f scripts/dev/build-metrics.sh ]; then \
+		echo "$(RED)❌ scripts/dev/build-metrics.sh not found!$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/dev/build-metrics.sh reset

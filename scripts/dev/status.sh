@@ -16,7 +16,7 @@ echo -e "${BLUE}║     📊 PROJECT STATUS OVERVIEW                            
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-cd projects
+cd repos
 
 for dir in */; do
     if [ -d "$dir/.git" ]; then

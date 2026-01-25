@@ -69,18 +69,41 @@ case $MODE in
     echo "✅ Build artifacts cleaned (volume removed)"
     ;;
 
+  check)
+    echo "🔍 Checking build status..."
+    cd "$ROOT_DIR"
+    if [ -f "$SCRIPT_DIR/check-build-errors.sh" ]; then
+      "$SCRIPT_DIR/check-build-errors.sh"
+    else
+      echo "❌ check-build-errors.sh not found!"
+      exit 1
+    fi
+    ;;
+
   *)
-    echo "Usage: $0 {enable|disable|status|logs [package]|rebuild|clean}"
+    echo "Usage: $0 {enable|disable|status|logs [package]|rebuild|clean|check}"
+    echo ""
+    echo "Commands:"
+    echo "  enable              - Start hot-reload mode"
+    echo "  disable             - Stop hot-reload mode"
+    echo "  status              - Check builder status"
+    echo "  logs [package]      - View compilation logs"
+    echo "  rebuild             - Restart all builders"
+    echo "  check               - Verify build integrity & detect errors"
+    echo "  clean               - Remove build artifacts"
     echo ""
     echo "Examples:"
     echo "  $0 enable              # Start hot-reload mode"
     echo "  $0 status              # Check builder status"
     echo "  $0 logs menu-registry  # View compilation logs"
-    echo "  $0 logs backend-common # View backend-common logs"
-    echo "  $0 logs types          # View types logs"
-    echo "  $0 rebuild             # Restart all builders"
+    echo "  $0 check               # Verify builds are healthy"
     echo "  $0 disable             # Stop hot-reload mode"
-    echo "  $0 clean               # Remove build artifacts"
+    echo ""
+    echo "💡 New features:"
+    echo "  - Smart service restarts (only affected services)"
+    echo "  - Enhanced health checks (validates .js + .d.ts + syntax)"
+    echo "  - Live dashboard: make dev-sync-dashboard"
+    echo "  - Performance metrics: make dev-sync-metrics"
     exit 1
     ;;
 esac

@@ -15,7 +15,7 @@ echo -e "${BLUE}║     🔄 UPDATING PROJECTS FROM GITHUB                      
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-cd projects
+cd repos
 
 for dir in */; do
     if [ -d "$dir/.git" ]; then

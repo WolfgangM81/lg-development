@@ -44,6 +44,50 @@ http://traefik.lg.local            # Traefik Dashboard
 
 ---
 
+## ⚡ Package Hot-Reload (Fast Development)
+
+**Neu!** Entwickle npm-Packages mit ~2-3 Sekunden Update-Zeit!
+
+```bash
+# Hot-Reload aktivieren
+make dev-sync
+
+# Live Dashboard öffnen (empfohlen!)
+make dev-sync-dashboard
+
+# Package bearbeiten - wird automatisch kompiliert
+vi repos/lg-menu-registry/src/index.ts
+
+# Services werden automatisch restartet (nur betroffene!)
+# ✅ menu-registry → nur menu-service restartet (6x schneller!)
+# ✅ backend-common → 5 Services restarten
+# ✅ types → alle 6 Services restarten
+```
+
+### Features
+
+- ⚡ **~2-3 Sekunden** vom Edit bis Service-Restart
+- 🎯 **Smart Restarts** - nur betroffene Services (6x schneller!)
+- 🔍 **Error Detection** - sofortige Fehlerbenachrichtigung
+- 📊 **Performance Metrics** - Build-Zeit Tracking
+- 🎨 **Live Dashboard** - Real-time Status-Übersicht
+- ✅ **Enhanced Health Checks** - validiert .js + .d.ts + Syntax
+
+### Alle Commands
+
+```bash
+make dev-sync                 # Hot-Reload aktivieren
+make dev-sync-dashboard       # Live Dashboard (⭐ empfohlen)
+make dev-sync-check           # Build-Integrität prüfen
+make dev-sync-metrics         # Performance-Stats anzeigen
+make dev-sync-logs PACKAGE=name  # Logs anzeigen
+make dev-normal               # Hot-Reload deaktivieren
+```
+
+**📖 Siehe [HOT_RELOAD_QUICK_REF.md](./HOT_RELOAD_QUICK_REF.md) für vollständige Referenz.**
+
+---
+
 ## ⚡ Quick Start (5 minutes)
 
 ### Prerequisites

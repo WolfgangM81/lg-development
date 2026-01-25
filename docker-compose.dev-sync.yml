@@ -43,7 +43,7 @@ services:
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/menu-registry/index.js"]
+      test: ["CMD", "sh", "-c", "test -f /dist/menu-registry/index.js && test -f /dist/menu-registry/index.d.ts && node -c /dist/menu-registry/index.js"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -86,7 +86,7 @@ services:
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/backend-common/index.js"]
+      test: ["CMD", "sh", "-c", "test -f /dist/backend-common/index.js && test -f /dist/backend-common/index.d.ts && node -c /dist/backend-common/index.js"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -129,7 +129,7 @@ services:
       "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "test", "-f", "/dist/types/index.js"]
+      test: ["CMD", "sh", "-c", "test -f /dist/types/index.js && test -f /dist/types/index.d.ts && node -c /dist/types/index.js"]
       interval: 5s
       timeout: 3s
       retries: 3

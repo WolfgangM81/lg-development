@@ -1,0 +1,18 @@
+{
+  "menu-registry": ["menu-service"],
+  "backend-common": [
+    "user-service",
+    "permissions-service",
+    "api-keys-service",
+    "secrets-service",
+    "tour-service"
+  ],
+  "types": [
+    "menu-service",
+    "user-service",
+    "permissions-service",
+    "api-keys-service",
+    "secrets-service",
+    "tour-service"
+  ]
+}
