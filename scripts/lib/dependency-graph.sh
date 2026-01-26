@@ -35,7 +35,7 @@ for service_dir in repos/lg-*-service/; do
 done
 
 for i in "${!SERVICES[@]}"; do
-    local service="${SERVICES[$i]}"
+    service="${SERVICES[$i]}"
     if [ $i -eq $((${#SERVICES[@]} - 1)) ]; then
         echo "  └─ $service → depends on: postgres, redis, traefik"
     else

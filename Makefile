@@ -2,15 +2,11 @@
 #
 # Main orchestration for multi-repo Docker Compose setup
 
-.PHONY: help setup prepare start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test dev-sync-check dev-sync-dashboard dev-sync-metrics dev-sync-metrics-watch dev-sync-metrics-reset
+.PHONY: help setup prepare collect proxy-domains start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test dev-sync-check dev-sync-dashboard dev-sync-metrics dev-sync-metrics-watch dev-sync-metrics-reset
 
 # Load environment variables
 -include .env
 export
-
-# Generate compose file list dynamically
-COMPOSE_FILES := $(shell ./scripts/lib/list-compose-files.sh 2>/dev/null || echo "")
-COMPOSE := docker-compose $(COMPOSE_FILES)
 
 # Colors for output
 RED := \033[0;31m
@@ -29,10 +25,12 @@ help:
 	@echo ""
 	@echo "$(GREEN)Setup Commands:$(NC)"
 	@echo "  make setup          - Interactive environment setup (.env)"
-	@echo "  make prepare        - Clone all repos from GitHub"
+	@echo "  make prepare        - Clone all repos + generate docker-compose.yml"
+	@echo "  make collect        - Regenerate docker-compose.yml from repos"
+	@echo "  make proxy-domains  - Setup proxy domains (admin.lg.local, etc.)"
 	@echo ""
 	@echo "$(GREEN)Development Commands:$(NC)"
-	@echo "  make start          - Start all services (with dependencies)"
+	@echo "  make start          - Detect ports + start all services"
 	@echo "  make stop           - Stop all services"
 	@echo "  make restart        - Restart all services"
 	@echo "  make logs [SERVICE] - View logs (all or specific)"
@@ -89,7 +87,7 @@ setup:
 	fi
 	@./scripts/setup.sh
 
-# Prepare: Clone all repos
+# Prepare: Clone all repos + generate docker-compose.yml
 prepare:
 	@if [ ! -f .env ]; then \
 		echo "$(RED)❌ .env not found! Run 'make setup' first$(NC)"; \
@@ -101,28 +99,34 @@ prepare:
 	fi
 	@./scripts/prepare.sh
 
-# Start with dependency resolution
-start:
-	@if [ -z "$(COMPOSE_FILES)" ]; then \
-		echo "$(RED)❌ No repos found! Run 'make prepare' first$(NC)"; \
+# Collect: Regenerate docker-compose.yml from repos
+collect:
+	@if [ ! -d repos ]; then \
+		echo "$(RED)❌ repos/ not found! Run 'make prepare' first$(NC)"; \
 		exit 1; \
 	fi
+	@python3 scripts/lib/collect-compose.py
+
+# Proxy Domains: Setup /etc/hosts and test domains
+proxy-domains:
+	@./scripts/dev/setup-proxy-domains.sh
+
+# Start all services (port detection + docker compose up)
+start:
 	@if [ ! -f scripts/start.sh ]; then \
-		echo "$(YELLOW)⚠️  scripts/start.sh not found, using direct start$(NC)"; \
-		echo "$(YELLOW)🚀 Starting services...$(NC)"; \
-		$(COMPOSE) up -d; \
-	else \
-		./scripts/start.sh; \
+		echo "$(RED)❌ scripts/start.sh not found!$(NC)"; \
+		exit 1; \
 	fi
+	@./scripts/start.sh
 
 # Stop all services
 stop:
-	@if [ -n "$(COMPOSE_FILES)" ]; then \
-		echo "$(YELLOW)🛑 Stopping services...$(NC)"; \
-		$(COMPOSE) down; \
-		echo "$(GREEN)✅ Services stopped$(NC)"; \
+	@if [ -f docker-compose.yml ]; then \
+		echo "$(YELLOW)Stopping services...$(NC)"; \
+		docker compose down; \
+		echo "$(GREEN)Services stopped$(NC)"; \
 	else \
-		echo "$(YELLOW)⊘ No services running$(NC)"; \
+		echo "$(YELLOW)No docker-compose.yml found$(NC)"; \
 	fi
 
 # Restart
@@ -131,45 +135,44 @@ restart: stop start
 # Logs
 logs:
 ifdef SERVICE
-	@$(COMPOSE) logs -f $(SERVICE)
+	@docker compose logs -f $(SERVICE)
 else
-	@$(COMPOSE) logs -f
+	@docker compose logs -f
 endif
 
 # Status
 status:
 	@if [ -f scripts/status.sh ]; then \
 		./scripts/status.sh; \
-	elif [ -n "$(COMPOSE_FILES)" ]; then \
-		echo "$(BLUE)📊 Service Status:$(NC)"; \
-		$(COMPOSE) ps; \
+	elif [ -f docker-compose.yml ]; then \
+		docker compose ps; \
 	else \
-		echo "$(YELLOW)⊘ No services found$(NC)"; \
+		echo "$(YELLOW)No docker-compose.yml found$(NC)"; \
 	fi
 
 # Build
 build:
 ifdef SERVICE
-	@$(COMPOSE) build $(SERVICE)
+	@docker compose build $(SERVICE)
 else
-	@$(COMPOSE) build
+	@docker compose build
 endif
 
 # Show final config (debugging)
 config:
-	@if [ -z "$(COMPOSE_FILES)" ]; then \
-		echo "$(RED)❌ No compose files found$(NC)"; \
+	@if [ ! -f docker-compose.yml ]; then \
+		echo "$(RED)❌ docker-compose.yml not found! Run 'make prepare' first$(NC)"; \
 		exit 1; \
 	fi
-	@$(COMPOSE) config
+	@docker compose config
 
 # Clean
 clean:
-	@echo "$(YELLOW)🧹 Cleaning up...$(NC)"
-	@if [ -n "$(COMPOSE_FILES)" ]; then \
-		$(COMPOSE) down -v 2>/dev/null || true; \
+	@echo "$(YELLOW)Cleaning up...$(NC)"
+	@if [ -f docker-compose.yml ]; then \
+		docker compose down -v 2>/dev/null || true; \
 	fi
-	@echo "$(GREEN)✅ Cleanup complete$(NC)"
+	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # Clean repos (DANGEROUS!)
 clean-repos:

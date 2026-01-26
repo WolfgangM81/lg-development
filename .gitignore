@@ -4,6 +4,10 @@ repos/
 # Projects directory (Symlinks to local projects)
 projects/
 
+# Generated files
+docker-compose.yml
+.env.ports
+
 # Environment files
 .env
 .env.local

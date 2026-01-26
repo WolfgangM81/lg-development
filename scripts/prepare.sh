@@ -104,6 +104,17 @@ print_step "Docker Networks"
 
 echo ""
 
+# Generate unified docker-compose.yml
+print_step "Generating docker-compose.yml"
+if command -v python3 &>/dev/null; then
+    python3 "${SCRIPT_DIR}/lib/collect-compose.py"
+else
+    warning "python3 not found - skipping compose file generation"
+    info "Install Python 3 and run: python3 scripts/lib/collect-compose.py"
+fi
+
+echo ""
+
 # Summary
 print_header "Prepare Summary"
 echo "  ✅ Cloned:  $CLONED"
@@ -122,8 +133,9 @@ fi
 if [ $CLONED -gt 0 ] || [ $SKIPPED -gt 0 ]; then
     success "Repositories ready!"
     echo ""
-    echo "Next step:"
+    echo "Next steps:"
     echo "  ${CYAN}make start${NC}    # Start all services"
+    echo "  ${CYAN}make collect${NC}  # Regenerate docker-compose.yml"
     echo ""
 else
     die "No repositories were cloned. Check GitHub authentication and repo existence."

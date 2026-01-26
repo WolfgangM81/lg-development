@@ -1,25 +1,23 @@
 #!/bin/bash
 # scripts/stop.sh
 #
-# Stop all services
+# Stop all LG services
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 source "${SCRIPT_DIR}/lib/common.sh"
 
-COMPOSE_FILES=$("${SCRIPT_DIR}/lib/list-compose-files.sh" 2>/dev/null || echo "")
-
-if [ -z "$COMPOSE_FILES" ]; then
-    info "No services running"
+if [ ! -f "${ROOT_DIR}/docker-compose.yml" ]; then
+    info "No docker-compose.yml found - nothing to stop"
     exit 0
 fi
 
-COMPOSE="docker-compose $COMPOSE_FILES"
-
 print_header "Stopping Services"
 
-$COMPOSE down
+docker compose down
 
 echo ""
 success "All services stopped"

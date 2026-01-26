@@ -1,27 +1,25 @@
 #!/bin/bash
 # scripts/status.sh
 #
-# Show service status
+# Show LG service status
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib/common.sh"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-COMPOSE_FILES=$("${SCRIPT_DIR}/lib/list-compose-files.sh" 2>/dev/null || echo "")
+source "${SCRIPT_DIR}/lib/common.sh"
 
-if [ -z "$COMPOSE_FILES" ]; then
-    warning "No services found"
+if [ ! -f "${ROOT_DIR}/docker-compose.yml" ]; then
+    warning "No docker-compose.yml found"
     echo ""
-    info "Run 'make prepare' to clone repositories"
+    info "Run 'make prepare' to clone repositories and generate compose file"
     exit 0
 fi
 
-COMPOSE="docker-compose $COMPOSE_FILES"
-
 print_header "Service Status"
 
-$COMPOSE ps
+docker compose ps
 
 echo ""
 

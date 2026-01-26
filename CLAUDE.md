@@ -276,27 +276,57 @@ One-time migration from monorepo to multi-repo (already done).
 - `lg-public` - External network for Traefik routing
 - `lg-internal` - Internal network for service-to-service communication
 
-### Proxy Domains (No Ports!)
+### Proxy Domains
 
-**Setup Required:** Add to `/etc/hosts`:
+**Setup:** Run `make proxy-domains` to configure and test.
+
+**Required /etc/hosts entries:**
 ```bash
 127.0.0.1 admin.lg.local
 127.0.0.1 api.lg.local
 127.0.0.1 traefik.lg.local
 ```
 
-**Access Services:**
-- `http://admin.lg.local` - Admin UI
-- `http://api.lg.local/user` - User Service
-- `http://api.lg.local/permissions` - Permissions Service
-- `http://api.lg.local/rbac` - RBAC Endpoints
-- `http://api.lg.local/v1` - API Keys Service
-- `http://api.lg.local/tour` - Tour Service
-- `http://api.lg.local/menu` - Menu Service
-- `http://api.lg.local/secrets` - Secrets Service
-- `http://traefik.lg.local` - Traefik Dashboard
+**With OrbStack (Port 80 - no port needed):**
+- `http://admin.lg.local/` - Admin UI
+- `http://api.lg.local/user/health` - User Service
+- `http://api.lg.local/keys/health` - API Keys Service
+- `http://traefik.lg.local/` - Traefik Dashboard
+
+**Universal (Port 8180 - works everywhere):**
+- `http://admin.lg.local:8180/`
+- `http://api.lg.local:8180/user/health`
+- `http://traefik.lg.local:8180/`
+
+**API Endpoints (via api.lg.local):**
+
+| Path | Service |
+|------|---------|
+| `/user/*` | User Service |
+| `/permissions/*` | Permissions Service |
+| `/rbac/*` | Permissions Service (RBAC) |
+| `/keys/*` | API Keys Service |
+| `/tour/*` | Tour Service |
+| `/menu/*` | Menu Service |
+| `/secrets/*` | Secrets Service |
+
+**OrbStack vs Docker Desktop:**
+
+| Feature | OrbStack | Docker Desktop |
+|---------|----------|----------------|
+| Port 80 auto-routing | ✅ `dev.orbstack.domains` | ❌ Manual (TRAEFIK_HTTP_PORT=80) |
+| Port 8180 fallback | ✅ Works | ✅ Works |
 
 **See:** [PROXY_DOMAINS.md](./PROXY_DOMAINS.md) for complete setup guide.
+
+### Demo Credentials
+
+| Field | Value |
+|-------|-------|
+| **E-Mail** | `admin@licenseguard.local` |
+| **Password** | `admin123` |
+
+These credentials are seeded via `repos/lg-postgres/init.sql` and displayed in the Admin UI login pages.
 
 ### Environment Variables
 
