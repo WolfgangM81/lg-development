@@ -11,6 +11,38 @@ It manages Docker Stack orchestration, package hot-reload, and multi-service dev
 
 ## Critical Rules
 
+### 0. KEINE WORKAROUNDS - NUR RICHTIGE FIXES!
+
+**ABSOLUT VERBOTEN:**
+- ❌ Workarounds die das eigentliche Problem umgehen
+- ❌ "Schnelle Lösungen" die später Probleme verursachen
+- ❌ Temporäre Hacks mit "TODO: später richtig machen"
+- ❌ Hardcodierte Werte statt korrekter Konfiguration
+- ❌ Fehlende Dependencies durch Shortcuts umgehen
+
+**BYPASS NUR ZUM DEBUGGEN:**
+- ⚠️ `BYPASS_AUTH=true` o.ä. ist NUR für kurzzeitiges Debugging erlaubt
+- ⚠️ Niemals als Lösung vorschlagen oder implementieren
+- ⚠️ Wenn Bypass existiert, trotzdem den richtigen Fix implementieren
+
+**IMMER:**
+- ✅ Das Problem an der Wurzel lösen
+- ✅ Bestehende Patterns aus anderen Services übernehmen (z.B. auth.ts von user-service)
+- ✅ Fehlende Dependencies hinzufügen statt Code zu vereinfachen
+- ✅ Korrekte Implementierung wie in Referenz-Services
+- ✅ Wenn etwas in user-service funktioniert, exakt so in anderen Services umsetzen
+
+**Beispiel Auth:**
+```typescript
+// FALSCH - Workaround
+req.user = { id: 'hardcoded', role: 'admin' }; // "funktioniert ja"
+
+// RICHTIG - Wie in user-service
+import jwt from 'jsonwebtoken';
+const decoded = jwt.verify(token, JWT_SECRET);
+req.user = { id: decoded.sub, email: decoded.email, role: decoded.role };
+```
+
 ### 1. NEVER run npm/node on the host
 
 ```bash
