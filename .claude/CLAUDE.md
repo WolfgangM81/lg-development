@@ -51,6 +51,9 @@ make dev-sync                # Enable
 make dev-sync-dashboard      # Monitor
 make dev-normal              # Disable
 
+# Admin UI HMR Development
+make dev-admin               # Start Admin with HMR (full mount, no cache)
+
 # Testing (in Docker!)
 make test                    # Sequential
 make test-parallel           # Parallel
@@ -69,7 +72,7 @@ make test-parallel           # Parallel
 
 ## Proxy Domains
 
-### With OrbStack (Port 80 - no port needed)
+### Default (Port 80 frei)
 ```
 http://admin.lg.local/           → Admin UI
 http://api.lg.local/user/health  → User Service
@@ -77,12 +80,16 @@ http://api.lg.local/keys/health  → API Keys Service
 http://traefik.lg.local/         → Traefik Dashboard
 ```
 
-### Universal (Port 8180 - works everywhere)
+### Fallback (Port 80 belegt, z.B. durch VPP)
 ```
 http://admin.lg.local:8180/
 http://api.lg.local:8180/user/health
 http://traefik.lg.local:8180/
 ```
+
+**Hinweis:** Port-Erkennung erfolgt automatisch via `make start`.
+Wenn Port 80 belegt ist (z.B. VPP Traefik), wird Port 8180 verwendet.
+Für URLs ohne Port: blockierenden Service stoppen.
 
 ### API Endpoints (via api.lg.local)
 
@@ -148,6 +155,7 @@ types          -> all 6 services
 | `Makefile` | All make targets (start, stop, test, proxy-domains, etc.) |
 | `docker-compose.yml` | Auto-generated service orchestration |
 | `docker-compose.dev-sync.yml` | Hot-reload builder containers |
+| `docker-compose.dev.yml` | Admin UI HMR development (full mount) |
 | `.env` | Environment config (secrets, clone settings) |
 | `.env.ports` | Port configuration (auto-detected) |
 | `scripts/dev/setup-proxy-domains.sh` | Proxy domains setup & test |
@@ -155,14 +163,42 @@ types          -> all 6 services
 | `repos/lg-traefik/dynamic.yml` | Traefik routing configuration |
 | `repos/lg-postgres/init.sql` | Database schema + seed data |
 
-## OrbStack vs Docker Desktop
+## Port-Erkennung
 
-| Feature | OrbStack | Docker Desktop |
-|---------|----------|----------------|
-| Port 80 auto-routing | ✅ `dev.orbstack.domains` | ❌ Manual config |
-| `*.orb.local` domains | ✅ Automatic | ❌ Not available |
-| /etc/hosts needed | ✅ Yes | ✅ Yes |
-| Port 8180 fallback | ✅ Works | ✅ Works |
+Das System erkennt automatisch belegte Ports und weicht auf Alternativen aus:
+
+| Port | Default | Fallback | Verwendet von |
+|------|---------|----------|---------------|
+| HTTP | 80 | 8180 | Traefik Web |
+| HTTPS | 443 | 8443 | Traefik SSL |
+| Dashboard | 8080 | 8181 | Traefik API |
+
+**Typische Konflikte:**
+- VPP Traefik auf Port 80 → LG nutzt 8180
+- OrbStack auf Port 80 → LG nutzt 8180
+
+Prüfung: `make start` zeigt aktuelle Ports an.
+
+## Admin UI HMR Development
+
+Für schnelle Frontend-Entwicklung mit Hot Module Replacement:
+
+```bash
+make dev-admin    # Startet Admin UI mit HMR
+```
+
+**Features:**
+- Vite Dev Server mit HMR (sofortige Updates ohne Page Reload)
+- Bidirektionale Volume Mounts (alle Änderungen werden reflektiert)
+- Kein Docker Cache (immer frischer Build)
+- Workspace-Pakete (`lg-admin-ui`, `lg-menu-registry`) werden überwacht
+
+**Konfiguration:**
+- `repos/lg-admin/Dockerfile.dev` - Minimales Dev-Image
+- `repos/lg-admin/vite.config.ts` - HMR & Watch-Konfiguration
+- `docker-compose.dev.yml` - Volume Mounts & Environment
+
+**URL:** `http://admin.lg.local:8180/` (oder Port 80 wenn frei)
 
 ## Detailed Documentation
 

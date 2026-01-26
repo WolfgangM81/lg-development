@@ -39,4 +39,31 @@ else
     info "Some services may have failed. Check logs: ${CYAN}make logs${NC}"
 fi
 
-echo ""
+# Show URLs
+if [ "$RUNNING" -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  URLs"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Load port config
+    if [ -f "${ROOT_DIR}/.env.ports" ]; then
+        source "${ROOT_DIR}/.env.ports"
+    fi
+
+    HTTP_PORT="${TRAEFIK_HTTP_PORT:-80}"
+    DASH_PORT="${TRAEFIK_DASHBOARD_PORT:-8080}"
+
+    if [ "$HTTP_PORT" = "80" ]; then
+        echo -e "  ${GREEN}Admin UI:${NC}    http://admin.lg.local/"
+        echo -e "  ${GREEN}API:${NC}         http://api.lg.local/"
+        echo -e "  ${GREEN}Traefik:${NC}     http://traefik.lg.local:${DASH_PORT}/"
+    else
+        echo -e "  ${GREEN}Admin UI:${NC}    http://admin.lg.local:${HTTP_PORT}/"
+        echo -e "  ${GREEN}API:${NC}         http://api.lg.local:${HTTP_PORT}/"
+        echo -e "  ${GREEN}Traefik:${NC}     http://traefik.lg.local:${DASH_PORT}/"
+        echo ""
+        echo -e "  ${YELLOW}⚠️  Port 80 belegt - nutze Port ${HTTP_PORT}${NC}"
+    fi
+    echo ""
+fi

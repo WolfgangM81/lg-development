@@ -1,0 +1,33 @@
+# Development override - KEIN CACHE, ALLES GEMOUNTET
+#
+# Usage:
+#   make dev-admin
+#
+# Alles wird bidirektional gemountet:
+# - Source files
+# - node_modules
+# - Config files
+
+services:
+  admin:
+    build:
+      context: ./repos
+      dockerfile: lg-admin/Dockerfile.dev
+      # KEIN CACHE!
+      no_cache: true
+    volumes:
+      # KOMPLETTES lg-admin Verzeichnis gemountet (bidirektional)
+      - ./repos/lg-admin:/app:delegated
+      # Shared libraries komplett gemountet
+      - ./repos/lg-admin-ui:/workspace/lg-admin-ui:delegated
+      - ./repos/lg-menu-registry:/workspace/lg-menu-registry:delegated
+    environment:
+      NODE_ENV: development
+      VITE_HMR_PORT: ${TRAEFIK_HTTP_PORT:-80}
+    # Healthcheck für dev server (IPv4 explizit)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

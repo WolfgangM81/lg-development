@@ -41,17 +41,27 @@ resolve_port() {
     local alt_port=$3
 
     if is_port_free "$default_port"; then
-        echo "  ✅ $var_name=$default_port (default, available)"
+        echo "  ✅ $var_name=$default_port"
         echo "${var_name}=${default_port}" >> "$PORTS_FILE"
     else
+        # Find what's using the port
+        local blocker
+        blocker=$(lsof -i :"$default_port" -P -n 2>/dev/null | awk 'NR==2 {print $1}' || echo "unknown")
+
         local free_port
         free_port=$(find_free_port "$alt_port")
         if [ "$free_port" != "0" ]; then
-            echo "  ⚠️  $var_name=$default_port occupied → using $free_port"
+            echo "  ⚠️  $var_name=$free_port (Port $default_port belegt von: $blocker)"
             echo "${var_name}=${free_port}" >> "$PORTS_FILE"
             CONFLICTS=$((CONFLICTS + 1))
+
+            # Special hint for HTTP port
+            if [ "$var_name" = "TRAEFIK_HTTP_PORT" ] && [ "$free_port" != "80" ]; then
+                PORT_80_BLOCKED=true
+                PORT_80_BLOCKER="$blocker"
+            fi
         else
-            echo "  ❌ $var_name: no free port found near $alt_port!"
+            echo "  ❌ $var_name: kein freier Port gefunden!"
             echo "${var_name}=${default_port}" >> "$PORTS_FILE"
         fi
     fi
@@ -61,6 +71,8 @@ echo "🔍 Detecting available ports..."
 echo ""
 
 PORTS_FILE="${ROOT_DIR}/.env.ports"
+PORT_80_BLOCKED=false
+PORT_80_BLOCKER=""
 cat > "$PORTS_FILE" <<EOF
 # Auto-generated port configuration
 # Generated at: $(date)
@@ -82,10 +94,22 @@ resolve_port       DYNAMODB_PORT           8000     8001
 echo ""
 
 if [ $CONFLICTS -gt 0 ]; then
-    echo "ℹ️  $CONFLICTS port(s) reassigned to avoid conflicts"
+    echo "ℹ️  $CONFLICTS Port(s) umbelegt wegen Konflikten"
+
+    # Special message for port 80
+    if [ "$PORT_80_BLOCKED" = "true" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  Port 80 belegt von: $PORT_80_BLOCKER"
+        echo ""
+        echo "   URLs mit Port: http://admin.lg.local:${TRAEFIK_HTTP_PORT:-8180}/"
+        echo ""
+        echo "   Für URLs ohne Port: $PORT_80_BLOCKER stoppen"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    fi
 else
-    echo "✅ All default ports available"
+    echo "✅ Alle Ports verfügbar - URLs ohne Port möglich"
 fi
 
 echo ""
-echo "📄 Port config written to .env.ports"
+echo "📄 Port config: .env.ports"

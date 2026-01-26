@@ -2,7 +2,7 @@
 #
 # Main orchestration for multi-repo Docker Compose setup
 
-.PHONY: help setup prepare collect proxy-domains start stop restart logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test dev-sync-check dev-sync-dashboard dev-sync-metrics dev-sync-metrics-watch dev-sync-metrics-reset
+.PHONY: help setup prepare collect proxy-domains start stop restart dev-admin logs status build config clean clean-repos test test-parallel test-coverage test-watch publish-packages publish-package cache-deps install-publish-workflows setup-github-registry setup-publish-config install-build-workflows dev-sync dev-normal dev-toggle dev-sync-status dev-sync-logs dev-sync-rebuild dev-sync-clean dev-sync-watch dev-sync-test dev-sync-check dev-sync-dashboard dev-sync-metrics dev-sync-metrics-watch dev-sync-metrics-reset
 
 # Load environment variables
 -include .env
@@ -33,6 +33,7 @@ help:
 	@echo "  make start          - Detect ports + start all services"
 	@echo "  make stop           - Stop all services"
 	@echo "  make restart        - Restart all services"
+	@echo "  make dev-admin      - Start Admin UI with HMR (live editing)"
 	@echo "  make logs [SERVICE] - View logs (all or specific)"
 	@echo "  make status         - Show service status"
 	@echo ""
@@ -131,6 +132,28 @@ stop:
 
 # Restart
 restart: stop start
+
+# Dev Admin: Start admin service with HMR (Hot Module Replacement)
+# KEIN CACHE - alles gemountet!
+dev-admin:
+	@echo "$(YELLOW)Starting Admin UI with HMR (no cache, full mount)...$(NC)"
+	@docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache admin
+	@docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps --force-recreate admin
+	@echo ""
+	@echo "$(GREEN)✅ Admin UI running with HMR$(NC)"
+	@if [ "$${TRAEFIK_HTTP_PORT:-80}" = "80" ]; then \
+		echo "   URL: http://admin.lg.local/"; \
+	else \
+		echo "   URL: http://admin.lg.local:$${TRAEFIK_HTTP_PORT:-8180}/"; \
+		echo "   $(YELLOW)⚠️  Port 80 belegt - nutze Port $${TRAEFIK_HTTP_PORT:-8180}$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)💡 Alles gemountet (bidirektional):$(NC)"
+	@echo "   - repos/lg-admin/           → /app"
+	@echo "   - repos/lg-admin-ui/        → /workspace/lg-admin-ui"
+	@echo "   - repos/lg-menu-registry/   → /workspace/lg-menu-registry"
+	@echo ""
+	@echo "$(YELLOW)💡 View logs:$(NC) docker compose logs -f admin"
 
 # Logs
 logs:
