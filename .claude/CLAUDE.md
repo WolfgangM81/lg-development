@@ -313,6 +313,35 @@ import { TourBanner, TourModalButton } from "../../src/components/tour";
 <TourModalButton formId="admin.user.users.edit" />
 ```
 
+### Dashboard Stats: API Endpoints & Modul-Relevanz
+
+**Problem 1:** Dashboard Stats Endpoint `/api/user/stats` existiert NICHT → `/api/user/stats/dashboard` verwenden!
+
+**API Endpoints:**
+
+| Dashboard | Endpoint |
+|-----------|----------|
+| User Admin | `/api/user/stats/dashboard` |
+| Permissions | `/api/permissions/stats` |
+| API Keys | `/api/keys/stats` |
+| Tour | `/api/tour/stats` |
+
+**Problem 2:** Dashboards zeigten Cross-Modul-Stats (User Dashboard hatte API-Key-Validierungen).
+
+**Regel:** Jedes Dashboard zeigt NUR Stats seines eigenen Moduls. User Dashboard berechnet Stats direkt aus der Benutzerliste im Loader:
+
+```typescript
+// app/routes/_admin.user.dashboard.tsx
+const users = await userApi.getUsers(accessToken);
+const stats = {
+  totalUsers: users.length,
+  activeUsers: users.filter(u => u.is_active).length,
+  inactiveUsers, adminUsers, regularUsers, newUsersLast30Days
+};
+```
+
+**Dashboard Configs:** `src/configs/dashboards/*.config.ts` (config-driven, kein hardcoded HTML)
+
 ### SSR Migration Reference: /permissions/users
 
 **Fully migrated page** serving as pattern for future migrations:
