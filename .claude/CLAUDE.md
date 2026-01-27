@@ -295,6 +295,24 @@ SELECT id, label_default, href FROM menu_items WHERE label_default LIKE '%Name%'
 **Wichtig:** Legacy Pages in `src/pages/` werden über `app/routes/` eingebunden und nutzen
 den accessToken aus dem Loader via localStorage Bridge.
 
+### Tour Integration bei SSR-Migration NICHT VERGESSEN!
+
+**Problem:** Migrierte SSR-Seiten haben keine Tour wenn TourBanner fehlt.
+
+**Lösung:** Bei SSR-Migration MÜSSEN Tour-Komponenten hinzugefügt werden:
+
+```typescript
+// Import aus Legacy (nutzen gleichen Valtio Store!)
+import { TourBanner, TourModalButton } from "../../src/components/tour";
+
+// Auf Seiten-Ebene
+<TourBanner formId="admin.user.users" />
+
+// In Modals
+<TourModalButton formId="admin.user.users.create" />
+<TourModalButton formId="admin.user.users.edit" />
+```
+
 ### SSR Migration Reference: /permissions/users
 
 **Fully migrated page** serving as pattern for future migrations:
@@ -316,13 +334,18 @@ useEffect(() => {
 
 // 3. Mutations via Valtio (optimistic)
 await usersActions.createUser(data);  // POST /api/user/users
+
+// 4. Tour Integration (aus src/components/tour/)
+<TourBanner formId="admin.user.users" />
+<TourModalButton formId="admin.user.users.create" />
 ```
 
 **Key Files:**
-- `app/routes/_admin.permissions.users.tsx` - Full SSR page
+- `app/routes/_admin.permissions.users.tsx` - Full SSR page with Tour
 - `app/stores/users.store.ts` - Valtio with optimistic updates
 - `app/stores/api.client.ts` - Client API with auth headers
 - `app/lib/api.server.ts` - Server API for loaders
+- `src/components/tour/` - Legacy Tour components (WICHTIG: aus src/ importieren!)
 
 ## Detailed Documentation
 
