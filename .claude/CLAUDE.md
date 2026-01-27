@@ -295,6 +295,35 @@ SELECT id, label_default, href FROM menu_items WHERE label_default LIKE '%Name%'
 **Wichtig:** Legacy Pages in `src/pages/` werden über `app/routes/` eingebunden und nutzen
 den accessToken aus dem Loader via localStorage Bridge.
 
+### SSR Migration Reference: /permissions/users
+
+**Fully migrated page** serving as pattern for future migrations:
+
+```typescript
+// app/routes/_admin.permissions.users.tsx
+
+// 1. Server Loader
+export async function loader({ request }) {
+  const { accessToken } = await requireAuth(request);
+  const users = await userApi.getUsers(accessToken);
+  return { users };
+}
+
+// 2. Client Hydration
+useEffect(() => {
+  usersActions.hydrate(loaderData.users);
+}, [loaderData.users]);
+
+// 3. Mutations via Valtio (optimistic)
+await usersActions.createUser(data);  // POST /api/user/users
+```
+
+**Key Files:**
+- `app/routes/_admin.permissions.users.tsx` - Full SSR page
+- `app/stores/users.store.ts` - Valtio with optimistic updates
+- `app/stores/api.client.ts` - Client API with auth headers
+- `app/lib/api.server.ts` - Server API for loaders
+
 ## Detailed Documentation
 
 See root-level `CLAUDE.md` for:
