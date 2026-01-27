@@ -68,6 +68,24 @@ npm test      # NEVER!
 - Do NOT edit manually
 - Regenerate with: `make collect`
 
+### 4. KEINE UNNÖTIGEN NACHFRAGEN - Offensichtliche Folgeschritte DIREKT ausführen!
+
+**NICHT FRAGEN, SONDERN MACHEN:**
+- ❌ "Soll ich die Migration ausführen?" → Migration DIREKT ausführen
+- ❌ "Soll ich den Container neu bauen?" → Container DIREKT rebuilden
+- ❌ "Soll ich testen ob es funktioniert?" → DIREKT testen
+
+**Offensichtliche Folgeschritte:**
+- Nach DB-Migration erstellen → Migration ausführen
+- Nach Code-Änderungen → Betroffene Container rebuilden (`docker-compose up -d --build <service>`)
+- Nach Frontend-Änderungen → Admin rebuilden
+- Nach Fehlschlag → Problem analysieren, fixen, erneut ausführen
+
+**Nur fragen bei echten Entscheidungen:**
+- Mehrere gleichwertige Lösungsansätze
+- Destruktive Aktionen (DB reset, git force push)
+- Unklare Anforderungen
+
 ## Quick Reference
 
 ```bash
@@ -231,6 +249,51 @@ make dev-admin    # Startet Admin UI mit HMR
 - `docker-compose.dev.yml` - Volume Mounts & Environment
 
 **URL:** `http://admin.lg.local:8180/` (oder Port 80 wenn frei)
+
+## LG-Admin Gotchas
+
+### Tour System: Zwei Stores!
+
+**Problem:** Es gibt ZWEI Valtio Stores für das Tour-System:
+- `src/stores/tourStore.ts` - **LEGACY** (wird von TourBanner & Legacy Pages verwendet)
+- `app/stores/tour.store.client.ts` - **SSR** (unbenutzt, für zukünftige Migration)
+
+**Lösung:** In `app/routes/_admin.tsx` wird der Legacy TourOverlay importiert:
+```typescript
+import("../../src/components/tour/TourOverlay").then((mod) => {
+  setComponent(() => mod.TourOverlay || mod.default);
+});
+```
+
+### Matrix Page: Batch Endpoint für N+1 Fix
+
+**Problem:** Matrix Page machte N API Calls (1 pro Org Unit).
+
+**Lösung:** Batch Endpoint in `lg-permissions-service`:
+```
+GET /api/rbac/org-units/matrix/all-assignments
+```
+
+**Frontend:** `apiClient.getAllOrgUnitRoleAssignments()` in `src/api/permissionsApi.ts`
+
+### Menu Items: Doppelte Einträge vermeiden
+
+Vor dem Hinzufügen neuer Menu Items in der Datenbank prüfen:
+```sql
+SELECT id, label_default, href FROM menu_items WHERE label_default LIKE '%Name%';
+```
+
+### SSR vs Legacy Code
+
+| Aspekt | app/ (SSR) | src/ (Legacy) |
+|--------|------------|---------------|
+| Routing | File-based Routes | React.lazy() |
+| Data | Loaders | TanStack Query |
+| Auth | Cookie Sessions | localStorage |
+| State | Valtio (SSR-safe) | Valtio (client) |
+
+**Wichtig:** Legacy Pages in `src/pages/` werden über `app/routes/` eingebunden und nutzen
+den accessToken aus dem Loader via localStorage Bridge.
 
 ## Detailed Documentation
 
