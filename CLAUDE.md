@@ -153,38 +153,55 @@ git push origin main  # ← Zu WolfgangM81/lg-admin-ui
 │       ├── start.sh                # Docker Stack starten
 │       └── ...
 ├── templates/                       # .npmrc, Workflows, etc.
-├── repos/                           # ⚠️ GITIGNORED! Git Clones
-│   ├── lg-admin-ui/.git            # Von GitHub geclont
-│   ├── lg-management/.git          # Von GitHub geclont
-│   └── ...
+├── repos/                           # ⚠️ GITIGNORED! Git Clones (nested!)
+│   ├── infrastructure/
+│   │   ├── lg-traefik/.git
+│   │   ├── lg-postgres/.git
+│   │   ├── lg-redis/.git
+│   │   ├── lg-dynamodb/.git
+│   │   ├── lg-verdaccio/.git
+│   │   └── lg-monitoring/.git
+│   ├── services/
+│   │   ├── lg-user-service/.git
+│   │   ├── lg-permissions-service/.git
+│   │   ├── lg-api-keys-service/.git
+│   │   ├── lg-tour-service/.git
+│   │   ├── lg-menu-service/.git
+│   │   └── lg-secrets-service/.git
+│   └── ui/
+│       └── lg-admin/.git
 ├── .dependency-graph.json          # Auto-generiert
 ├── .env                             # Setup Config (CLONE_LG_*)
-└── docker-compose.yml              # Infrastructure Stack
-
-~/Projects/                          # ⚠️ OLD MONOREPO (removed after migration!)
-└── backups/                         # Backup archives only
+└── docker-compose.dev-sync.yml     # Hot-Reload Builders Stack
 ```
 
-### repos/ Contents (Git Clones)
+### repos/ Contents (Git Clones — nested seit 2026-02)
 
 ```
 repos/
-├── lg-platform/           # Infrastructure (Traefik, Postgres, Redis)
-├── lg-admin/              # Admin UI (Vite) - ACTIVE
-├── lg-management/         # Next.js 16 Admin UI - DISABLED
-├── lg-user-service/       # Backend: User & Auth
-├── lg-permissions-service/ # Backend: RBAC & DAG
-├── lg-api-keys-service/   # Backend: API Key Validation
-├── lg-tour-service/       # Backend: NextStepjs Integration
-├── lg-menu-service/       # Backend: Menu Management
-├── lg-secrets-service/    # Backend: Secrets Management
-├── lg-admin-ui/           # Shared UI Components (npm package)
-├── lg-menu-registry/      # Shared Types (npm package)
-├── lg-backend-common/     # Shared Backend Utilities (npm package)
-└── lg-e2e-tests/          # Playwright E2E Tests
+├── infrastructure/        # Layer 0 — Infrastructure
+│   ├── lg-traefik/        # Reverse Proxy
+│   ├── lg-postgres/       # PostgreSQL 16
+│   ├── lg-redis/          # Redis 7
+│   ├── lg-dynamodb/       # DynamoDB Local
+│   ├── lg-verdaccio/      # Local NPM Registry
+│   └── lg-monitoring/     # Prometheus + Grafana
+├── services/              # Layer 1 — Backend Services
+│   ├── lg-user-service/        # User & Auth
+│   ├── lg-permissions-service/ # RBAC & DAG
+│   ├── lg-api-keys-service/    # API Key Validation
+│   ├── lg-tour-service/        # NextStepjs Integration
+│   ├── lg-menu-service/        # Menu Management
+│   └── lg-secrets-service/     # Secrets Management
+└── ui/                    # Layer 2 — Frontend
+    └── lg-admin/          # Admin UI (Vite)
 ```
 
 **Each repo has its own `.git` directory!**
+
+**`scripts/lib/list-compose-files.sh`** auto-discovers via `find_repo_compose()` —
+versteht sowohl die nested-Struktur als auch (für Legacy-Kompatibilität) die alte
+flache Struktur (`repos/<name>/`).
 ```
 
 ---
