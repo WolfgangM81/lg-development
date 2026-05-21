@@ -127,15 +127,28 @@ def error(msg):
 # ============================================================
 
 def find_repos_with_compose():
-    """Find all repos that have a docker-compose.yml."""
+    """Find all repos with a docker-compose.yml.
+
+    Supports both legacy flat layout (repos/<name>/) and current nested
+    layout (repos/{infrastructure,services,ui,packages}/<name>/).
+    """
     if not REPOS_DIR.exists():
         error(f"repos/ directory not found at {REPOS_DIR}")
         sys.exit(1)
 
     repos = OrderedDict()
-    for d in sorted(REPOS_DIR.iterdir()):
-        if d.is_dir() and (d / "docker-compose.yml").exists():
-            repos[d.name] = d
+
+    for entry in sorted(REPOS_DIR.iterdir()):
+        if not entry.is_dir():
+            continue
+        # Flat: repo with own docker-compose.yml directly under repos/
+        if (entry / "docker-compose.yml").exists():
+            repos[entry.name] = entry
+            continue
+        # Nested: treat as category (infrastructure/, services/, ui/, packages/)
+        for sub in sorted(entry.iterdir()):
+            if sub.is_dir() and (sub / "docker-compose.yml").exists():
+                repos[sub.name] = sub
 
     if not repos:
         error("No docker-compose.yml files found in repos/")
