@@ -1,0 +1,82 @@
+name: Deploy to Staging
+
+on:
+  release:
+    types: [created, published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set deployment variables
+        id: vars
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ] || [ "${{ github.event_name }}" = "release" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: |
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.image_tag }}
+
+      - name: Deploy to ${{ steps.vars.outputs.environment }}
+        id: deploy
+        run: |
+          echo "Deploying to ${{ steps.vars.outputs.environment }}"
+          # Add deployment logic here (kubectl, docker-compose, etc.)
+
+          # Example for Kubernetes:
+          # kubectl set image deployment/my-service my-service=ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.image_tag }}
+
+          # Example for docker-compose on remote host:
+          # ssh user@staging-server "cd /app && docker-compose pull && docker-compose up -d"
+
+          echo "url=https://${{ steps.vars.outputs.environment }}.lg.example.com" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add smoke test commands here
+          # curl -f https://${{ steps.vars.outputs.environment }}.lg.example.com/health
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment to ${{ steps.vars.outputs.environment }} successful"
+          else
+            echo "❌ Deployment to ${{ steps.vars.outputs.environment }} failed"
+          fi
