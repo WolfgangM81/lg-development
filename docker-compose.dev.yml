@@ -12,15 +12,15 @@ services:
   admin:
     build:
       context: ./repos
-      dockerfile: lg-admin/Dockerfile.dev
+      dockerfile: ui/lg-admin/Dockerfile.dev
       # KEIN CACHE!
       no_cache: true
     volumes:
       # KOMPLETTES lg-admin Verzeichnis gemountet (bidirektional)
-      - ./repos/lg-admin:/app:delegated
+      - ./repos/ui/lg-admin:/app:delegated
       # Shared libraries komplett gemountet
-      - ./repos/lg-admin-ui:/workspace/lg-admin-ui:delegated
-      - ./repos/lg-menu-registry:/workspace/lg-menu-registry:delegated
+      - ./repos/packages/lg-admin-ui:/workspace/lg-admin-ui:delegated
+      - ./repos/packages/lg-menu-registry:/workspace/lg-menu-registry:delegated
     environment:
       NODE_ENV: development
       VITE_HMR_PORT: ${TRAEFIK_HTTP_PORT:-80}

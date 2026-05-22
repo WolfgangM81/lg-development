@@ -1,0 +1,53 @@
+# LG Development — Alternativer Port-Plan für Side-by-side mit orbiter/msp
+#
+# Standardmäßig will lg-development die gleichen Ports wie unsere orbiter-global
+# Container UND msp/_infra. Damit du beide GLEICHZEITIG laufen lassen kannst:
+#
+#   ln -s docker-compose.override.yml.example docker-compose.override.yml
+#
+# (oder: cp; symlink ist symmetrischer wenn du das example up-to-date hältst)
+#
+# Compose lädt override automatisch zusätzlich zu jedem -f $(./scripts/lib/list-compose-files.sh).
+#
+# Port-Schema "lg" (Range 56xx, 64xx, 84xx):
+#   Postgres   5642 (statt 5432)
+#   Redis      6490 (statt 6379)
+#   Verdaccio  4783 (statt 4873)
+#   Traefik    8480/8443 (statt 80/443) — kollidiert mit Caddy sonst!
+#   Prometheus 9091 (statt 9090)
+#   Grafana    3091 (statt 3000)
+#   DynamoDB   8400 (statt 8000)
+#
+# Hinweis: Traefik kann nicht auf Standard-80/443 wenn Caddy läuft. Wenn du
+# lg-Traefik-Routing-Tests willst, musst du Caddy temporär stoppen:
+#   sudo brew services stop caddy
+# Dann lg starten, dann nachher Caddy wieder.
+
+# NOTE: `!override` tag (Compose v2.24+) replaces the ports list completely
+# instead of appending. Without it, the original ports stay alongside ours and
+# cause conflicts. Verified with session-service side-by-side test 2026-05-21.
+
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5642:5432"
+  redis:
+    ports: !override
+      - "127.0.0.1:6490:6379"
+  verdaccio:
+    ports: !override
+      - "127.0.0.1:4783:4873"
+  traefik:
+    ports: !override
+      - "127.0.0.1:8480:80"
+      - "127.0.0.1:8443:443"
+      - "127.0.0.1:8081:8080"
+  prometheus:
+    ports: !override
+      - "127.0.0.1:9091:9090"
+  grafana:
+    ports: !override
+      - "127.0.0.1:3091:3000"
+  dynamodb:
+    ports: !override
+      - "127.0.0.1:8400:8000"
